@@ -40,7 +40,8 @@ def fetch_weather(lat, lon):
         "https://archive-api.open-meteo.com/v1/archive",
         params={
             "latitude": lat, "longitude": lon,
-            "start_date": start.isoformat(), "end_date": today.isoformat(),
+            # the archive API rejects today's date; the forecast call below covers recent days
+            "start_date": start.isoformat(), "end_date": (today - timedelta(days=1)).isoformat(),
             "hourly": "temperature_2m,relative_humidity_2m,precipitation,et0_fao_evapotranspiration",
             "timezone": "auto",
         }, timeout=60)

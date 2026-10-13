@@ -5,7 +5,23 @@ humidity and sends the readings over Wi-Fi to a **FastAPI** server, which stores
 **SQLite**, runs crop rules and **machine-learning models** over the history, and serves a
 live dashboard with watering and fertiliser recommendations.
 
+**Live demo:** <https://arjun-agl.github.io/Arjun-agl-Plantpulse-/> — a read-only copy of the
+dashboard running on recorded data (see [Static demo](#static-demo)).
+
 ![Data flow](docs/data-flow.jpeg)
+
+## Screenshots
+
+| Dashboard | History |
+|---|---|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![History](docs/screenshots/history.png) |
+| **Farm report** | **AI chat** |
+| ![Farm report](docs/screenshots/farm-report.png) | ![AI chat](docs/screenshots/ai-chat.png) |
+| **Pump control** | **Mobile** |
+| ![Pump control](docs/screenshots/pump-control.png) | <img src="docs/screenshots/mobile-dashboard.png" width="240" alt="Mobile dashboard"> |
+
+Screenshots use seeded demo data (a year of real Open-Meteo weather with simulated soil
+moisture), not a live sensor.
 
 ## How it works
 
@@ -89,8 +105,9 @@ location set in Settings, then simulates soil moisture on top of it):
 python seed_demo_data.py
 ```
 
-Then open the dashboard and train the models from there (it calls `POST /api/ml/train`)
-to build the ML models from that history.
+Start the server once first (step 1) so the database tables exist, then run the seeder.
+Afterwards open the dashboard and train the models from there (it calls
+`POST /api/ml/train`) to build the ML models from that history.
 
 ### 3. Connect a real ESP8266
 
@@ -109,6 +126,21 @@ deploying anywhere other than your own desk.
 Run `setup-lan.bat` once (it asks for Administrator rights to add a firewall rule limited
 to the local subnet and TCP port 8000), then start the server and use the **Local
 network** URL it prints.
+
+## Static demo
+
+GitHub Pages only serves static files, so it can't run the Python backend. The hosted demo
+(`docs/`) is the unmodified dashboard plus a small shim (`docs/demo-shim.js`) that replays
+API responses recorded from a real, seeded server. Charts, plans, recommendations and the
+history ranges are the real outputs of the backend and ML models; pump/spray buttons and
+chat are simulated and nothing is stored. It is a demo, not a live system.
+
+To regenerate it after changing the dashboard:
+
+```
+python tools/record_demo.py recorded.json     # server running + `pip install playwright`
+python tools/build_static_demo.py recorded.json
+```
 
 ## Configuration
 
@@ -137,5 +169,6 @@ knowledge/              Crop care notes used to ground the AI assistant
 plantpulse_esp8266/     ESP8266 firmware sketch
 start.bat / start.ps1   Windows launchers
 setup-lan.bat           One-off firewall rule for LAN access
-docs/                   Diagrams
+docs/                   Diagram, screenshots and the static GitHub Pages demo
+tools/                  Scripts that record the API and build the static demo
 ```
