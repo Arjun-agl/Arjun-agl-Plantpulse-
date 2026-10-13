@@ -1,0 +1,10 @@
+.env
+.agents/
+.claude/
+venv/
+__pycache__/
+*.pyc
+*.log
+plantpulse.db
+plantpulse.db-journal
+models/

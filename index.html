@@ -1,0 +1,2311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlantPulse</title>
+<link rel="manifest" href="/manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07110d; --bg2:#0a1f18; --surface:#0b1713; --card:#0c1814;
+  --green:#1cff95; --green2:#00e676; --cyan:#00d8ff;
+  --orange:#ff8a2a; --red:#ff5d73; --muted:#92b8a6;
+  --border:rgba(255,255,255,.06); --radius:22px;
+  --glow:0 0 0 1px rgba(28,255,149,.15),0 0 24px rgba(28,255,149,.08);
+  --card-shadow:0 12px 40px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,sans-serif;background:radial-gradient(circle at top left,#0a1f18 0%,#07110d 35%,#050a08 100%);color:#e0f2e9;min-height:100vh;display:flex}
+
+/* SIDEBAR */
+.sidebar{width:260px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;position:fixed;left:0;top:0;z-index:100}
+.sidebar-brand{padding:28px 24px 20px;border-bottom:1px solid var(--border)}
+.sidebar-brand h1{font-size:22px;font-weight:800;color:var(--green);letter-spacing:-0.5px}
+.sidebar-brand span{font-size:11px;color:var(--muted);margin-top:2px;display:block}
+.sidebar-nav{flex:1;padding:16px 12px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);transition:all .2s;margin-bottom:4px;border:1px solid transparent}
+.nav-item:hover{background:rgba(28,255,149,.06);color:var(--green)}
+.nav-item.active{background:rgba(28,255,149,.1);color:var(--green);border-color:rgba(28,255,149,.2);box-shadow:var(--glow)}
+.nav-item .icon{font-size:18px;width:22px;text-align:center}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+#connectivity{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff5d73;margin-right:6px;vertical-align:middle}
+#connectivity.online{background:var(--green)}
+
+/* MAIN */
+.main{margin-left:260px;flex:1;padding:28px;min-height:100vh}
+.page{display:none}.page.active{display:block}
+
+/* STATUS BANNER */
+.status-banner{padding:14px 20px;border-radius:16px;margin-bottom:24px;display:flex;align-items:center;gap:14px;font-weight:600;font-size:15px;border:1px solid rgba(255,255,255,.08);background:rgba(14,27,22,.7)}
+.status-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+
+/* CARDS GRID */
+.cards-row{display:grid;gap:18px;margin-bottom:22px}
+.cards-row-4{grid-template-columns:repeat(4,1fr)}
+.cards-row-2{grid-template-columns:repeat(2,1fr)}
+.card{background:linear-gradient(180deg,rgba(14,27,22,.92),rgba(9,18,15,.92));border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--card-shadow);position:relative;overflow:hidden}
+.card-label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.card-value{font-size:36px;font-weight:800;line-height:1}
+.card-sub{font-size:12px;color:var(--muted);margin-top:8px}
+.card-green{color:var(--green)}
+.card-cyan{color:var(--cyan)}
+.card-orange{color:var(--orange)}
+.card-red{color:var(--red)}
+
+/* MOISTURE RING */
+.moisture-card{display:flex;align-items:center;gap:20px}
+.ring-wrap{position:relative;width:110px;height:110px;flex-shrink:0}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(28,255,149,.12);stroke-width:10}
+.ring-fill{fill:none;stroke:var(--green);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .8s ease;filter:drop-shadow(0 0 8px rgba(28,255,149,.6))}
+.ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:none}
+.ring-pct{font-size:22px;font-weight:800;color:var(--green)}
+.ring-label{font-size:10px;color:var(--muted)}
+
+/* CHARTS */
+.chart-card{background:linear-gradient(180deg,rgba(14,27,22,.92),rgba(9,18,15,.92));border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:18px;box-shadow:var(--card-shadow)}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.chart-title{font-size:15px;font-weight:700}
+.chart-filters{display:flex;gap:6px}
+.filter-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;font-family:Inter,sans-serif}
+.filter-btn.active,.filter-btn:hover{background:rgba(28,255,149,.12);color:var(--green);border-color:rgba(28,255,149,.3)}
+canvas{width:100%!important;max-height:220px}
+
+/* AI CHAT */
+ .chat-wrap{background:linear-gradient(180deg,rgba(14,27,22,.92),rgba(9,18,15,.92));border:1px solid var(--border);border-radius:var(--radius);padding:18px;height:calc(100vh - 90px);display:flex;flex-direction:column}
+ .chat-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+ .chat-kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+ .chat-thread-title{font-size:22px;font-weight:800;color:#e0f2e9}
+ .chat-body{display:grid;grid-template-columns:280px minmax(0,1fr);gap:14px;flex:1;min-height:0}
+ .chat-thread-panel{background:rgba(8,18,14,.72);border:1px solid var(--border);border-radius:18px;padding:14px;display:flex;flex-direction:column;min-height:0}
+ .chat-thread-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+ .chat-thread-head .card-label{margin:0}
+ .chat-thread-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0}
+ .thread-item{background:rgba(14,27,22,.7);border:1px solid rgba(28,255,149,.08);border-radius:16px;padding:12px;cursor:pointer;transition:all .2s}
+ .thread-item:hover{border-color:rgba(28,255,149,.22);transform:translateY(-1px)}
+ .thread-item.active{border-color:rgba(28,255,149,.45);box-shadow:0 0 0 1px rgba(28,255,149,.18) inset;background:rgba(28,255,149,.07)}
+ .thread-item-title{font-size:13px;font-weight:700;color:#e0f2e9;margin-bottom:4px}
+ .thread-item-preview{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+ .thread-item-meta{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+ .chat-main{display:flex;flex-direction:column;min-height:0}
+ .chat-msgs{flex:1;overflow-y:auto;padding-right:6px;margin-bottom:16px;scrollbar-width:thin;scrollbar-color:rgba(28,255,149,.2) transparent}
+.msg{margin-bottom:14px;max-width:82%}
+.msg.user{margin-left:auto;text-align:right}
+ .msg-bubble{display:inline-block;padding:11px 16px;border-radius:16px;font-size:14px;line-height:1.55;white-space:pre-wrap}
+.msg.user .msg-bubble{background:rgba(28,255,149,.15);color:var(--green);border:1px solid rgba(28,255,149,.2)}
+.msg.ai .msg-bubble{background:rgba(14,27,22,.8);color:#e0f2e9;border:1px solid var(--border)}
+.msg-meta{font-size:11px;color:var(--muted);margin-top:4px;opacity:0;transition:opacity .15s ease}
+.msg:hover .msg-meta{opacity:1}
+.sys-notice{text-align:center;font-size:12px;color:var(--orange);margin:6px auto 14px;padding:6px 14px;max-width:80%;background:rgba(255,138,42,.07);border:1px solid rgba(255,138,42,.2);border-radius:999px;width:fit-content}
+.chat-input-row{display:flex;gap:10px;align-items:center}
+.model-chip{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:default}
+.model-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex:none}
+.quick-prompts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.quick-btn{padding:6px 14px;border-radius:20px;border:1px solid rgba(28,255,149,.25);background:rgba(28,255,149,.06);color:var(--green);cursor:pointer;font-size:12px;font-family:Inter,sans-serif;transition:all .2s}
+.quick-btn:hover{background:rgba(28,255,149,.15)}
+#chat-input{flex:1;background:rgba(14,27,22,.8);border:1px solid var(--border);border-radius:14px;padding:12px 16px;color:#e0f2e9;font-family:Inter,sans-serif;font-size:14px;outline:none;transition:border .2s}
+#chat-input:focus{border-color:rgba(28,255,149,.4)}
+.send-btn{padding:12px 20px;background:var(--green);color:#07110d;border:none;border-radius:14px;cursor:pointer;font-weight:700;font-size:14px;font-family:Inter,sans-serif;transition:opacity .2s}
+.send-btn:hover{opacity:.85}
+
+/* FORMS & SETTINGS */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.form-input,.form-select{background:rgba(14,27,22,.8);border:1px solid var(--border);border-radius:12px;padding:11px 14px;color:#e0f2e9;font-family:Inter,sans-serif;font-size:14px;outline:none;transition:border .2s;width:100%}
+.form-input:focus,.form-select:focus{border-color:rgba(28,255,149,.4)}
+.form-select option{background:#0c1814}
+.btn{padding:11px 22px;border-radius:14px;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:700;font-size:14px;transition:all .2s}
+.btn-green{background:var(--green);color:#07110d}.btn-green:hover{opacity:.85}
+.btn-outline{background:transparent;border:1px solid rgba(28,255,149,.3);color:var(--green)}.btn-outline:hover{background:rgba(28,255,149,.08)}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{opacity:.85}
+
+/* TABLE */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 14px;color:var(--green);font-size:11px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)}
+td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);color:#e0f2e9}
+tr:last-child td{border:none}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-error{background:rgba(255,93,115,.15);color:var(--red);border:1px solid rgba(255,93,115,.3)}
+.badge-warning{background:rgba(255,138,42,.15);color:var(--orange);border:1px solid rgba(255,138,42,.3)}
+.badge-info{background:rgba(0,216,255,.12);color:var(--cyan);border:1px solid rgba(0,216,255,.25)}
+.badge-ok{background:rgba(28,255,149,.1);color:var(--green);border:1px solid rgba(28,255,149,.25)}
+
+/* PUMP */
+.pump-mode-selector{display:flex;gap:10px;margin-bottom:20px}
+.pump-mode-btn{flex:1;padding:14px;border-radius:14px;border:2px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:Inter,sans-serif;font-weight:700;font-size:15px;transition:all .2s}
+.pump-mode-btn.active{border-color:var(--green);color:var(--green);background:rgba(28,255,149,.08)}
+.pump-controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.pump-btn{padding:22px;border-radius:18px;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:800;font-size:16px;transition:all .2s}
+.pump-on{background:linear-gradient(135deg,#1cff95,#00e676);color:#07110d}
+.pump-off{background:linear-gradient(135deg,#ff5d73,#e04060);color:#fff}
+.pump-on:hover,.pump-off:hover{opacity:.88;transform:translateY(-2px)}
+
+/* SECTION HEADER */
+.section-header{margin-bottom:20px}
+.section-header h2{font-size:22px;font-weight:800;color:#e0f2e9}
+.section-header p{font-size:13px;color:var(--muted);margin-top:4px}
+
+/* MOBILE */
+@media(max-width:1100px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:16px 14px 80px}
+  .cards-row-4{grid-template-columns:1fr 1fr}
+  .cards-row-2{grid-template-columns:1fr}
+  .settings-grid{grid-template-columns:1fr}
+  .pump-controls{grid-template-columns:1fr}
+  .bottom-nav{display:flex!important}
+  .chat-wrap{height:auto;min-height:calc(100vh - 140px)}
+  .chat-body{grid-template-columns:1fr}
+  .chat-thread-panel{max-height:220px}
+}
+.bottom-nav{display:none;position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(11,23,19,.95);border:1px solid var(--border);border-radius:30px;padding:8px 16px;gap:6px;z-index:200;backdrop-filter:blur(16px)}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 14px;border-radius:20px;cursor:pointer;font-size:10px;font-weight:600;color:var(--muted);transition:all .2s}
+.bnav-item.active,.bnav-item:hover{background:rgba(28,255,149,.1);color:var(--green)}
+.bnav-item span{font-size:18px}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+/* sensor-health alert */
+.sensor-alert{background:rgba(255,138,42,.1);border:1px solid rgba(255,138,42,.3);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--orange);margin-bottom:16px}
+
+/* watering predictor */
+.predictor-card{background:rgba(0,216,255,.06);border:1px solid rgba(0,216,255,.2);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:14px}
+.predictor-card .icon{font-size:28px}
+.predictor-text{font-size:14px;color:var(--cyan)}
+.predictor-text strong{font-size:18px;font-weight:800}
+</style>
+</head>
+<body>
+
+<!-- LOGIN / SIGNUP OVERLAY -->
+<style>
+.login-overlay{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at top,var(--bg2),var(--bg));backdrop-filter:blur(6px)}
+.login-overlay.show{display:flex}
+.login-card{width:min(400px,92vw);background:linear-gradient(180deg,rgba(14,27,22,.97),rgba(9,18,15,.97));border:1px solid var(--border);border-radius:16px;padding:34px 30px;box-shadow:var(--card-shadow)}
+.login-brand{text-align:center;margin-bottom:22px}
+.login-brand h1{font-size:26px;color:var(--green)}
+.login-brand p{font-size:13px;color:var(--muted);margin-top:4px}
+.login-tabs{display:flex;gap:8px;margin-bottom:20px}
+.login-tab{flex:1;padding:9px 0;text-align:center;font-size:13px;font-weight:700;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:10px;cursor:pointer}
+.login-tab.active{color:var(--green);border-color:rgba(28,255,149,.4);background:rgba(28,255,149,.07)}
+.login-field{margin-bottom:14px}
+.login-field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.login-field input{width:100%;padding:11px 13px;font-size:14px;color:inherit;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:10px;outline:none}
+.login-field input:focus{border-color:rgba(28,255,149,.45)}
+.login-btn{width:100%;padding:12px 0;margin-top:6px;font-size:14px;font-weight:800;color:#06130d;background:linear-gradient(90deg,var(--green),var(--green2));border:none;border-radius:10px;cursor:pointer}
+.login-error{display:none;margin-top:12px;padding:9px 12px;font-size:12.5px;border-radius:8px;color:var(--red);background:rgba(255,93,115,.08);border:1px solid rgba(255,93,115,.25)}
+.login-note{margin-top:16px;text-align:center;font-size:11.5px;color:var(--muted);line-height:1.6}
+</style>
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <div class="login-brand">
+      <h1>🌱 PlantPulse</h1>
+      <p>Smart Plant Monitor</p>
+    </div>
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-login" onclick="setAuthTab('login')">Log in</button>
+      <button class="login-tab" id="tab-signup" onclick="setAuthTab('signup')">Sign up</button>
+    </div>
+    <div class="login-field" id="field-name" style="display:none">
+      <label>First name</label>
+      <input type="text" id="auth-name" placeholder="e.g. John" maxlength="40" onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+    <div class="login-field">
+      <label>Email (Gmail id)</label>
+      <input type="email" id="auth-email" placeholder="you@gmail.com" onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="At least 4 characters" onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+    <button class="login-btn" id="auth-submit" onclick="submitAuth()">Log in</button>
+    <div class="login-error" id="auth-error"></div>
+    <div class="login-note">Your name and email stay in this app's own local database.<br>Nothing is shared anywhere.</div>
+  </div>
+</div>
+
+<!-- REQUIRED FARM PROFILE ONBOARDING -->
+<style>
+.profile-overlay{position:fixed;inset:0;z-index:9998;display:none;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at top,var(--bg2),var(--bg));overflow-y:auto}
+.profile-overlay.show{display:flex}.profile-card{width:min(850px,96vw);background:linear-gradient(180deg,rgba(14,27,22,.98),rgba(9,18,15,.98));border:1px solid rgba(28,255,149,.2);border-radius:22px;padding:28px;box-shadow:var(--card-shadow)}
+.profile-progress{display:flex;gap:8px;margin:16px 0 22px}.profile-progress span{height:5px;flex:1;border-radius:5px;background:rgba(255,255,255,.08)}.profile-progress span.active{background:var(--green)}
+.profile-plant-row{display:grid;grid-template-columns:1.2fr 1fr 1fr 100px 42px;gap:8px;margin-bottom:8px}.profile-plant-row button{border:1px solid rgba(255,93,115,.25);background:rgba(255,93,115,.08);color:var(--red);border-radius:10px;cursor:pointer}
+@media(max-width:700px){.profile-plant-row{grid-template-columns:1fr 1fr}.profile-plant-row button{min-height:40px}}
+</style>
+<div class="profile-overlay" id="profile-overlay">
+  <div class="profile-card">
+    <div style="font-size:12px;color:var(--green);font-weight:800;letter-spacing:1px">WELCOME TO PLANTPULSE</div>
+    <h2 style="margin-top:7px">Complete your farm profile</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:7px">This gives recommendations the right land and crop context. You can edit everything later in Settings.</p>
+    <div class="profile-progress"><span class="active"></span><span class="active"></span><span class="active"></span></div>
+    <div class="settings-grid">
+      <div class="form-group"><label class="form-label">Farm / garden name</label><input class="form-input" id="pf-farm-name" placeholder="e.g. Green Valley Farm"></div>
+      <div class="form-group"><label class="form-label">Land parcel name / number</label><input class="form-input" id="pf-parcel-name" placeholder="e.g. Parcel A or Survey 42"></div>
+      <div class="form-group"><label class="form-label">Parcel area</label><input class="form-input" id="pf-parcel-area" type="number" min="0.01" step="0.01" placeholder="e.g. 2.5"></div>
+      <div class="form-group"><label class="form-label">Area unit</label><select class="form-select" id="pf-parcel-unit"><option value="acre">Acres</option><option value="hectare">Hectares</option><option value="sq_m">Square metres</option><option value="sq_ft">Square feet</option></select></div>
+      <div class="form-group"><label class="form-label">Approximate total plants</label><input class="form-input" id="pf-plant-count" type="number" min="1" step="1" placeholder="A rough number is fine"></div>
+    </div>
+    <div class="card-label" style="margin:22px 0 10px">Plants and crops on this parcel</div>
+    <div id="pf-plants"></div>
+    <button class="btn btn-outline" type="button" onclick="addProfilePlant()">＋ Add another plant</button>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:20px">
+      <button class="btn btn-green" onclick="saveFarmProfile()">✓ Save profile and continue</button>
+      <span id="pf-error" style="font-size:12px;color:var(--red)"></span>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR (desktop) -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <h1>🌱 PlantPulse</h1>
+    <span>Smart Plant Monitor</span>
+    <div id="user-greet" style="display:none;margin-top:10px;font-size:13px;font-weight:700;color:var(--green)"></div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="icon">🏠</span>Dashboard</div>
+    <div class="nav-item" onclick="showPage('history',this)"><span class="icon">📈</span>History</div>
+    <div class="nav-item" onclick="showPage('chat',this)"><span class="icon">🤖</span>AI Chat</div>
+    <div class="nav-item" onclick="showPage('pump',this)"><span class="icon">⚙️</span>Pump Control</div>
+    <div class="nav-item" onclick="showPage('insights',this)"><span class="icon">📊</span>Farm Report</div>
+    <div class="nav-item" onclick="showPage('devices',this)"><span class="icon">📡</span>Devices & Wi-Fi</div>
+    <div class="nav-item" onclick="showPage('settings',this)"><span class="icon">🔧</span>Settings</div>
+  </div>
+  <div class="sidebar-footer">
+    <span id="connectivity"></span><span id="conn-label">Connecting…</span><br>
+    PlantPulse v2.0 · Stage 1<br>
+    <button onclick="logoutUser()" style="margin-top:10px;width:100%;padding:8px;border-radius:9px;border:1px solid rgba(255,93,115,.3);background:rgba(255,93,115,.07);color:var(--red);font:inherit;font-weight:700;cursor:pointer">🚪 Log out</button>
+  </div>
+</nav>
+
+<!-- BOTTOM NAV (mobile) -->
+<div class="bottom-nav">
+  <div class="bnav-item active" id="bnav-dashboard" onclick="showPage('dashboard',this,true)"><span>🏠</span>Home</div>
+  <div class="bnav-item" id="bnav-history" onclick="showPage('history',this,true)"><span>📈</span>Charts</div>
+  <div class="bnav-item" id="bnav-chat" onclick="showPage('chat',this,true)"><span>🤖</span>AI</div>
+  <div class="bnav-item" id="bnav-devices" onclick="showPage('devices',this,true)"><span>📡</span>Devices</div>
+  <div class="bnav-item" id="bnav-settings" onclick="showPage('settings',this,true)"><span>🔧</span>Settings</div>
+</div>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div id="status-banner" class="status-banner">
+    <div id="status-dot" class="status-dot" style="background:#1cff95"></div>
+    <span id="status-text">Loading plant data…</span>
+    <span id="anomaly-badge" style="margin-left:auto;font-size:12px;color:var(--muted)"></span>
+  </div>
+  <div id="sensor-health-alert" style="display:none" class="sensor-alert"></div>
+  <div class="chart-card" id="smart-plan-card" style="display:none;margin-bottom:18px">
+    <div class="chart-header">
+      <div class="chart-title card-green">🧠 Smart Watering Plan</div>
+      <div id="sp-weather" style="font-size:12.5px;color:var(--muted)"></div>
+    </div>
+    <div id="sp-headline" style="font-size:21px;font-weight:800;margin:4px 0 10px;color:#e0f2e9"></div>
+    <ul id="sp-reasons" style="font-size:13px;color:var(--muted);line-height:1.75;padding-left:20px;margin:0"></ul>
+    <div id="sp-ai" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;color:var(--green);line-height:1.6"></div>
+  </div>
+  <div class="chart-card" id="ai-decision-card" style="margin-bottom:18px">
+    <div class="chart-header">
+      <div class="chart-title card-cyan">🌅 AI Daily Decision</div>
+      <div id="ad-meta" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div id="ad-empty" style="font-size:13px;color:var(--muted);margin:6px 0 12px">
+      Ask the AI to decide today's plan — it compares right now against the most similar days in your farm's history.
+    </div>
+    <div id="ad-body" style="display:none">
+      <div id="ad-headline" style="font-size:19px;font-weight:800;color:#e0f2e9;margin:4px 0 10px"></div>
+      <div id="ad-details" style="font-size:13px;color:var(--muted);line-height:1.8"></div>
+      <div id="ad-reason" style="font-size:12.5px;color:var(--green);margin-top:10px;line-height:1.6"></div>
+      <div id="ad-guard" style="display:none;font-size:12px;color:var(--orange);margin-top:8px"></div>
+      <details class="decision-evidence" id="ad-evidence">
+        <summary>🔎 How this call was made</summary>
+        <div id="ad-flow" class="evidence-flow"></div>
+        <div class="evidence-heading">Values used from the last 24 hours</div>
+        <div id="ad-features" class="evidence-features"></div>
+        <div class="evidence-heading">Closest historical sensor days — sorted by similarity</div>
+        <div id="ad-match-note" class="evidence-note"></div>
+        <div class="table-wrap"><table class="evidence-table">
+          <thead><tr><th>Rank / day</th><th>Similarity</th><th>Avg / min moisture</th><th>24h drop</th><th>Max temp</th><th>Avg humidity</th><th>What happened next 48h</th></tr></thead>
+          <tbody id="ad-analogs"></tbody>
+        </table></div>
+      </details>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+        <span style="font-size:12px;color:var(--muted)">Was this a good call?</span>
+        <button class="quick-btn" onclick="sendDecisionFeedback('up')">👍 Good</button>
+        <button class="quick-btn" onclick="sendDecisionFeedback('down')">👎 Wrong</button>
+        <span id="ad-fb-status" style="font-size:12px;color:var(--green)"></span>
+      </div>
+    </div>
+    <button class="btn btn-green" id="ad-btn" onclick="generateAiDecision()" style="margin-top:12px">🌅 Get Today's AI Decision</button>
+  </div>
+  <div class="cards-row cards-row-2">
+    <div class="card">
+      <div class="card-label">⚡ When to start Motor?</div>
+      <div id="mot-head" style="font-size:17px;font-weight:800;margin:8px 0 10px;color:#e0f2e9">Checking soil and forecast…</div>
+      <ul id="mot-reasons" style="font-size:12.5px;color:var(--muted);line-height:1.75;padding-left:18px;margin:0"></ul>
+    </div>
+    <div class="card">
+      <div class="card-label">🧪 Which fertilizer should I use?</div>
+      <div id="fert-head" style="font-size:17px;font-weight:800;margin:8px 0 10px;color:#e0f2e9">Reading soil nutrients…</div>
+      <ul id="fert-reasons" style="font-size:12.5px;color:var(--muted);line-height:1.75;padding-left:18px;margin:0"></ul>
+      <div id="fert-sensors" style="margin-top:10px;font-size:11.5px;color:var(--muted)"></div>
+    </div>
+  </div>
+  <div id="predictor-card" class="predictor-card" style="display:none">
+    <span class="icon">🕐</span>
+    <div class="predictor-text">Next watering predicted in <strong id="next-water-val">—</strong> <span id="next-water-unit">hours</span></div>
+  </div>
+  <div class="cards-row cards-row-4" id="live-cards">
+    <div class="card">
+      <div class="card-label">Soil Moisture</div>
+      <div class="moisture-card">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 110 110" width="110" height="110">
+            <circle class="ring-bg" cx="55" cy="55" r="47"/>
+            <circle class="ring-fill" id="ring-fill" cx="55" cy="55" r="47" stroke-dasharray="295.3" stroke-dashoffset="295.3"/>
+          </svg>
+          <div class="ring-text"><span class="ring-pct" id="moisture-pct">—</span><span class="ring-label">%</span></div>
+        </div>
+        <div>
+          <div class="card-sub" id="moisture-raw">Raw: —</div>
+          <div class="card-sub" id="moisture-scale">Scale: —</div>
+          <div class="card-sub" id="moisture-source">Source: —</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Temperature</div>
+      <div class="card-value card-orange" id="temp-val">—</div>
+      <div class="card-sub">°C · <span id="temp-status">—</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Humidity</div>
+      <div class="card-value card-cyan" id="hum-val">—</div>
+      <div class="card-sub">% · <span id="hum-status">—</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Last Watered</div>
+      <div class="card-value card-green" id="last-water-val" style="font-size:22px">—</div>
+      <div class="card-sub" id="last-water-ts">Never logged</div>
+    </div>
+  </div>
+  <div class="cards-row cards-row-5">
+    <div class="card"><div class="card-label">🟢 Nitrogen (N)</div><div class="card-value" id="sn-n" style="font-size:20px">—</div><div class="card-sub">mg/kg</div></div>
+    <div class="card"><div class="card-label">🔵 Phosphorus (P)</div><div class="card-value" id="sn-p" style="font-size:20px">—</div><div class="card-sub">mg/kg</div></div>
+    <div class="card"><div class="card-label">🟠 Potassium (K)</div><div class="card-value" id="sn-k" style="font-size:20px">—</div><div class="card-sub">mg/kg</div></div>
+    <div class="card"><div class="card-label">⚗️ Soil pH</div><div class="card-value" id="sn-ph" style="font-size:20px">—</div><div class="card-sub">acidity</div></div>
+    <div class="card"><div class="card-label">⚡ EC</div><div class="card-value" id="sn-ec" style="font-size:20px">—</div><div class="card-sub">mS/cm · salts</div></div>
+  </div>
+  <div class="cards-row cards-row-2">
+    <div class="card">
+      <div class="card-label">🌱 Crop & Stage</div>
+      <div class="card-value card-green" id="crop-display" style="font-size:18px">—</div>
+      <div class="card-sub" id="stage-display">—</div>
+      <div class="card-sub" id="crop-note" style="margin-top:8px;color:var(--orange)"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">🤖 AI Summary</div>
+      <div id="ai-summary" style="font-size:13px;color:var(--muted);line-height:1.65">Loading AI summary…</div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="page-history" class="page">
+  <div class="section-header"><h2>📈 History — All Past Data</h2><p>Every sensor, watering event and anomaly in one place — pick a range to trace anything</p></div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title card-green">Moisture History</div>
+      <div class="chart-filters">
+        <button class="filter-btn active" onclick="setHistoryFilter('24h',this)">24h</button>
+        <button class="filter-btn" onclick="setHistoryFilter('7d',this)">7d</button>
+        <button class="filter-btn" onclick="setHistoryFilter('30d',this)">30d</button>
+        <button class="filter-btn" onclick="setHistoryFilter('1y',this)">1y</button>
+      </div>
+    </div>
+    <canvas id="history-chart" style="max-height:280px"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div class="chart-title card-green">🧪 Soil Nutrients — N · P · K (mg/kg)</div></div>
+    <canvas id="npk-chart" style="max-height:260px"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div class="chart-title card-cyan">⚗️ Soil pH & EC</div></div>
+    <canvas id="phec-chart" style="max-height:260px"></canvas>
+  </div>
+  <div class="section-header" style="margin-top:8px"><h2>💧 Watering Log</h2></div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-label">Log a watering event</div>
+    <div style="display:flex;gap:12px;margin-top:10px;align-items:center">
+      <input class="form-input" id="water-note" placeholder="Optional note (e.g. used 200ml)" style="flex:1">
+      <button class="btn btn-green" onclick="logWatering()">💧 Log Watering Now</button>
+    </div>
+  </div>
+  <div class="card table-wrap" style="margin-bottom:18px">
+    <table><thead><tr><th>Time</th><th>Method</th><th>Moisture Before</th><th>Note</th></tr></thead>
+    <tbody id="watering-tbody"></tbody></table>
+  </div>
+  <div class="section-header"><h2>⚠️ Anomaly Log</h2></div>
+  <div class="card table-wrap"><table id="anomaly-table">
+    <thead><tr><th>Time</th><th>Type</th><th>Severity</th><th>Message</th></tr></thead>
+    <tbody id="anomaly-tbody"></tbody>
+  </table></div>
+</div>
+
+<!-- CHAT -->
+<div id="page-chat" class="page">
+  <div class="chat-wrap">
+    <div class="chat-body">
+      <aside class="chat-thread-panel">
+        <div class="chat-thread-head">
+          <div class="card-label">Chats</div>
+          <button class="quick-btn" onclick="startNewChat()">＋ New chat</button>
+        </div>
+        <div class="chat-thread-list" id="chat-thread-list"></div>
+      </aside>
+      <section class="chat-main">
+        <div id="chat-offline-banner" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;color:var(--orange);background:rgba(255,138,42,.08);border:1px solid rgba(255,138,42,.25)"></div>
+        <div class="quick-prompts" id="quick-prompts">
+          <button class="quick-btn" onclick="sendQuick('Should I water now?')">💧 Water now?</button>
+          <button class="quick-btn" onclick="sendQuick('Give me a daily plant summary')">📊 Daily summary</button>
+          <button class="quick-btn" onclick="sendQuick('Is there any fungal or pest risk?')">🍄 Pest risk?</button>
+          <button class="quick-btn" onclick="sendQuick('Why did moisture drop?')">📉 Moisture drop?</button>
+          <button class="quick-btn" onclick="sendQuick('What is the current temperature and humidity status?')">🌡️ Temp & humidity</button>
+        </div>
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input-row">
+          <div class="model-chip" id="model-chip"><span class="dot"></span>AI</div>
+          <input type="text" id="chat-input" placeholder="Ask your plant AI…" onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="send-btn" onclick="sendChat()">Send</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- PUMP -->
+<div id="page-pump" class="page">
+  <div class="section-header"><h2>💧 Smart Irrigation</h2><p>Live sensors + weather forecast decide when your plant drinks</p></div>
+  <div class="card" style="margin-bottom:18px;background:rgba(255,93,115,.05);border-color:rgba(255,93,115,.15)">
+    <div style="font-size:13px;color:var(--orange)">⚠️ Pump hardware not detected. Controls are ready — connect relay to D5 and reservoir float switch to D6 to activate.</div>
+  </div>
+
+  <div class="pump-mode-selector">
+    <button class="pump-mode-btn active" id="mode-manual" onclick="setPumpMode('manual')">🖐️ Manual</button>
+    <button class="pump-mode-btn" id="mode-auto" onclick="setPumpMode('auto')">🤖 Automatic</button>
+  </div>
+
+  <div class="pump-stats">
+    <div class="pump-stat"><div class="lbl">💧 Soil Moisture</div><div class="val card-green" id="pp-moist">—</div></div>
+    <div class="pump-stat"><div class="lbl">🌡 Temperature</div><div class="val card-orange" id="pp-temp">—</div></div>
+    <div class="pump-stat"><div class="lbl">🌫 Humidity</div><div class="val card-cyan" id="pp-hum">—</div></div>
+    <div class="pump-stat"><div class="lbl">⚙️ Pump</div><div class="val" id="pp-pump" style="color:var(--muted)">Idle</div></div>
+  </div>
+
+  <div class="card-label" style="margin-bottom:10px">🧠 Decision Pipeline</div>
+  <div class="pipeline">
+    <div class="pipe-node"><div class="t">📡 SENSORS</div><div class="d" id="pn-sensors">Waiting for data…</div></div>
+    <div class="pipe-link"><span>➤</span></div>
+    <div class="pipe-node"><div class="t">🌦 WEATHER</div><div class="d" id="pn-weather">Loading forecast…</div></div>
+    <div class="pipe-link"><span>➤</span></div>
+    <div class="pipe-node"><div class="t">🧠 AI BRAIN</div><div class="d" id="pn-brain">Thinking…</div></div>
+    <div class="pipe-link"><span>➤</span></div>
+    <div class="pipe-node"><div class="t">💧 ACTION</div><div class="d" id="pn-action" style="color:#e0f2e9;font-weight:700">—</div></div>
+  </div>
+
+  <!-- MANUAL MODE: humans decide — direct controls + hand-set trigger rules -->
+  <div id="manual-section">
+    <div class="pump-controls">
+      <button class="pump-btn pump-on" onclick="pumpOn()">▶ Pump ON</button>
+      <button class="pump-btn pump-off" onclick="pumpOff()">■ Pump OFF</button>
+    </div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-label" style="margin-bottom:5px">🖐️ Automation Rule Builder</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Moisture and stop target are the core controls. Every other sensor condition is optional—leave it blank to ignore it.</div>
+      <div class="card-label" style="margin-bottom:10px">💧 Core irrigation controls</div>
+      <div class="settings-grid">
+        <div class="form-group"><label class="form-label">Start when soil moisture falls below</label><input class="form-input" id="pa-on" type="number" min="5" max="90" placeholder="% volumetric moisture"><small style="color:var(--muted)">Example: 55% means irrigation can start below 55%.</small></div>
+        <div class="form-group"><label class="form-label">Stop when soil moisture reaches</label><input class="form-input" id="pa-off" type="number" min="10" max="95" placeholder="% volumetric moisture"><small style="color:var(--muted)">Must be higher than the start threshold.</small></div>
+        <div class="form-group"><label class="form-label">Watering window start</label><input class="form-input" id="pa-ws" type="time"></div>
+        <div class="form-group"><label class="form-label">Watering window end</label><input class="form-input" id="pa-we" type="time"></div>
+      </div>
+      <details style="margin-top:22px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.015);overflow:hidden">
+      <summary style="padding:14px 16px;cursor:pointer;color:var(--cyan);font-size:12px;font-weight:800;letter-spacing:.8px;text-transform:uppercase">📡 Advance sensor conditions <span style="color:var(--muted);font-weight:600;text-transform:none;letter-spacing:0">— expand to configure</span></summary>
+      <div class="settings-grid" style="padding:4px 16px 16px">
+        <div class="form-group"><label class="form-label">Temperature below (°C)</label><input class="form-input" id="pa-temp" type="number" step="0.1" placeholder="Optional · ignore if blank"></div>
+        <div class="form-group"><label class="form-label">Humidity below (%)</label><input class="form-input" id="pa-hum" type="number" step="0.1" placeholder="Optional · avoids spraying in high humidity"></div>
+        <div class="form-group"><label class="form-label">Nitrogen below (mg/kg)</label><input class="form-input" id="pa-n" type="number" step="0.1" placeholder="Optional fertilizer trigger"></div>
+        <div class="form-group"><label class="form-label">Phosphorus below (mg/kg)</label><input class="form-input" id="pa-p" type="number" step="0.1" placeholder="Optional fertilizer trigger"></div>
+        <div class="form-group"><label class="form-label">Potassium below (mg/kg)</label><input class="form-input" id="pa-k" type="number" step="0.1" placeholder="Optional fertilizer trigger"></div>
+        <div class="form-group"><label class="form-label">Maximum EC (mS/cm)</label><input class="form-input" id="pa-ec" type="number" step="0.01" placeholder="Optional · prevents salt buildup"></div>
+        <div class="form-group"><label class="form-label">Minimum soil pH</label><input class="form-input" id="pa-ph-min" type="number" step="0.1" min="0" max="14" placeholder="Optional"></div>
+        <div class="form-group"><label class="form-label">Maximum soil pH</label><input class="form-input" id="pa-ph-max" type="number" step="0.1" min="0" max="14" placeholder="Optional"></div>
+        <div class="form-group"><label class="form-label">Rain probability below (%)</label><input class="form-input" id="pa-rain" type="number" min="0" max="100" placeholder="Optional · skip if rain likely"></div>
+      </div>
+      </details>
+      <div class="card-label" style="margin:22px 0 10px">🧪 Action to run</div>
+      <div class="settings-grid">
+        <div class="form-group"><label class="form-label">Action type</label><select class="form-select" id="pa-action" onchange="toggleFertilizerFields()"><option value="water">Water only</option><option value="fertilizer">Fertilizer spray / fertigation</option></select></div>
+        <div class="form-group fertilizer-rule"><label class="form-label">Application method</label><select class="form-select" id="pa-fert-method"><option value="fertigation">Fertigation through irrigation</option><option value="foliar">Foliar spray</option></select></div>
+        <div class="form-group fertilizer-rule"><label class="form-label">Mix concentration (%)</label><input class="form-input" id="pa-fert-conc" type="number" min="0" step="0.01" placeholder="Use product-label concentration"></div>
+        <div class="form-group fertilizer-rule"><label class="form-label">Tank volume (litres)</label><input class="form-input" id="pa-fert-tank" type="number" min="0" step="0.1" placeholder="Optional"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:12px;align-items:center">
+        <button class="btn btn-green" onclick="savePumpRules()">💾 Save Rules</button>
+        <button class="btn btn-outline fertilizer-rule" onclick="sprayOn()">🧪 Start fertilizer</button>
+        <button class="btn btn-red fertilizer-rule" onclick="sprayOff()">■ Stop spray</button>
+        <span id="pa-status" style="font-size:13px"></span>
+      </div>
+      <div id="pa-summary" style="margin-top:10px;font-size:12.5px;color:var(--muted)"></div>
+    </div>
+  </div>
+
+  <!-- AUTOMATIC MODE: only AI-taken decisions live here -->
+  <div id="auto-section" style="display:none">
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-label" style="margin-bottom:6px">📅 AI Watering Plan</div>
+      <div id="plan-empty" style="font-size:13px;color:var(--muted);margin:8px 0 14px">
+        No plan yet. Generate one — the AI will read your live sensors and this week's real weather forecast, then plan the watering days for your crop.
+      </div>
+      <div id="plan-meta" style="display:none;font-size:12px;color:var(--muted);margin:6px 0 12px"></div>
+      <div id="plan-progress" style="display:none;font-size:13.5px;font-weight:700;color:var(--green);margin:8px 0 14px"></div>
+      <div class="day-strip" id="day-strip" style="display:none"></div>
+      <div id="plan-ai" style="display:none;font-size:13px;color:var(--green);line-height:1.65;border-top:1px solid var(--border);padding-top:12px;margin-bottom:14px"></div>
+      <button class="btn btn-green" id="gen-plan-btn" onclick="generatePlan()">✨ Generate Watering Plan for my Crop</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-label">Pump Status</div>
+    <div id="pump-status-text" style="font-size:16px;font-weight:700;color:var(--muted);margin-top:8px">Idle</div>
+    <div id="pump-runtime" style="font-size:13px;color:var(--muted);margin-top:4px"></div>
+  </div>
+  <div class="card table-wrap">
+    <div class="card-label" style="margin-bottom:12px">Pump History</div>
+    <table><thead><tr><th>Start</th><th>Duration</th><th>Mode</th><th>Stop Reason</th></tr></thead>
+    <tbody id="pump-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- FARM REPORT -->
+<div id="page-insights" class="page">
+  <div class="section-header"><h2>📊 Farm Report</h2><p>One year of sensor + weather data, turned into money-saving decisions</p></div>
+  <div class="cards-row cards-row-2">
+    <div class="card">
+      <div class="card-label">💰 Water Savings — last 30 days</div>
+      <div id="ins-sav-head" style="font-size:26px;font-weight:800;color:var(--green);margin:8px 0 4px">—</div>
+      <div id="ins-sav-sub" style="font-size:13px;color:var(--muted);line-height:1.7">Calculating…</div>
+    </div>
+    <div class="card">
+      <div class="card-label">🍄 Disease Risk — next 3 days</div>
+      <div id="ins-disease" style="font-size:13.5px;line-height:1.7;margin-top:10px;color:var(--muted)">Checking forecast…</div>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div class="chart-title card-green">📅 Next 7 Days — AI Water Plan</div></div>
+    <div class="day-strip" id="ins-week" style="margin-bottom:0"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div class="chart-title card-cyan">📈 Month by Month — waterings, plant stress & fungal risk</div></div>
+    <canvas id="ins-months" style="max-height:300px"></canvas>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-label">🌱 Best Planting Window</div>
+    <div id="ins-plant" style="font-size:13.5px;color:var(--muted);line-height:1.8;margin-top:10px">Analyzing a year of temperatures…</div>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-label">🎯 AI Model Accuracy — backtested on your farm's history</div>
+    <div id="ins-backtest" style="font-size:13.5px;color:var(--muted);line-height:1.8;margin-top:10px">Running leave-one-out backtest…</div>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-label">🤖 ML Predictions — XGBoost trained on this farm</div>
+    <div id="ins-ml" style="font-size:13.5px;color:var(--muted);line-height:1.9;margin-top:10px">Loading models…</div>
+    <div style="margin-top:12px;display:flex;gap:12px;align-items:center">
+      <button class="btn btn-green" onclick="retrainMl()">🔁 Retrain Models</button>
+      <span id="ins-ml-status" style="font-size:12.5px;color:var(--muted)"></span>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="page-settings" class="page">
+  <div class="section-header"><h2>🔧 Settings</h2></div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="chart-header"><div class="card-label" style="margin:0">🌾 Farm Profile</div><span id="profile-status" class="badge badge-warning">Incomplete</span></div>
+    <div id="profile-summary" style="font-size:13px;color:var(--muted);line-height:1.7">Add your land parcel and plants to personalize PlantPulse.</div>
+    <button class="btn btn-outline" style="margin-top:14px" onclick="openFarmProfileEditor()">✏️ Edit farm profile & plants</button>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-label" style="margin-bottom:16px">🔐 Account — Change Password</div>
+    <div class="settings-grid">
+      <div class="form-group"><label class="form-label">Current Password</label><input class="form-input" id="cp-old" type="password"></div>
+      <div class="form-group"><label class="form-label">New Password</label><input class="form-input" id="cp-new" type="password" placeholder="At least 4 characters"></div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:12px;align-items:center">
+      <button class="btn btn-green" onclick="changePassword()">🔐 Change Password</button>
+      <button class="btn btn-outline" onclick="logoutUser()">🚪 Log out</button>
+      <span id="cp-status" style="font-size:13px"></span>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-label" style="margin-bottom:16px">📡 Sensor, Weather & Notifications</div>
+    <div class="settings-grid">
+      <div class="form-group"><label class="form-label">Air Value (dry sensor)</label><input class="form-input" id="s-air-value" type="number"></div>
+      <div class="form-group"><label class="form-label">Water Value (wet sensor)</label><input class="form-input" id="s-water-value" type="number"></div>
+      <div class="form-group"><label class="form-label">ntfy.sh Topic</label><input class="form-input" id="s-ntfy" placeholder="e.g. arjun-plant-2026"></div>
+      <div class="form-group"><label class="form-label">Latitude (for weather)</label><input class="form-input" id="s-lat" type="number" step="0.0001" placeholder="19.0760"></div>
+      <div class="form-group"><label class="form-label">Longitude (for weather)</label><input class="form-input" id="s-lon" type="number" step="0.0001" placeholder="72.8777"></div>
+      <div class="form-group"><label class="form-label">Plant Location</label>
+        <select class="form-select" id="s-outdoor">
+          <option value="true">🌤️ Outdoor (rain matters)</option>
+          <option value="false">🏠 Indoor (ignore rain)</option>
+        </select></div>
+    </div>
+    <div style="margin-top:18px;display:flex;gap:12px">
+      <button class="btn btn-green" onclick="saveSettings()">💾 Save Settings</button>
+      <button class="btn btn-outline" onclick="exportCSV('24h')">⬇ Export 24h CSV</button>
+      <button class="btn btn-outline" onclick="exportCSV('7d')">⬇ Export 7d CSV</button>
+    </div>
+    <div id="settings-msg" style="margin-top:10px;font-size:13px;color:var(--green)"></div>
+  </div>
+</div>
+
+
+<!-- DEVICES PAGE (insert before </main>) -->
+<div id="page-devices" class="page">
+  <div class="section-header">
+    <h2>📡 Devices & Wi-Fi</h2>
+    <p>Connected ESP8266 devices, server info, and network diagnostics</p>
+  </div>
+
+  <!-- SERVER INFO CARD -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-label" style="margin-bottom:14px">🖥️ Server Info</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <div class="card-sub">Server IP</div>
+        <div style="font-size:22px;font-weight:800;color:var(--green)" id="srv-ip">—</div>
+      </div>
+      <div>
+        <div class="card-sub">Port</div>
+        <div style="font-size:22px;font-weight:800;color:var(--cyan)" id="srv-port">—</div>
+      </div>
+      <div style="grid-column:span 2">
+        <div class="card-sub">ESP8266 posts sensor data to</div>
+        <div style="font-size:14px;font-weight:700;color:var(--orange);background:rgba(255,138,42,.08);border:1px solid rgba(255,138,42,.2);border-radius:10px;padding:10px 14px;margin-top:6px;word-break:break-all" id="srv-ingest">—</div>
+      </div>
+      <div style="grid-column:span 2">
+        <div class="card-sub">Open dashboard on any device (same Wi-Fi)</div>
+        <div style="font-size:14px;font-weight:700;color:var(--cyan);background:rgba(0,216,255,.06);border:1px solid rgba(0,216,255,.15);border-radius:10px;padding:10px 14px;margin-top:6px" id="srv-dash">—</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="testPing()">🔁 Test Server Ping</button>
+      <button class="btn btn-outline" onclick="showQR()">📱 Show QR Code</button>
+      <button class="btn btn-outline" onclick="loadDevices()">🔄 Refresh Devices</button>
+    </div>
+    <div id="ping-result" style="margin-top:10px;font-size:13px"></div>
+  </div>
+
+  <!-- QR CODE CARD -->
+  <div id="qr-card" class="card" style="display:none;margin-bottom:18px;text-align:center">
+    <div class="card-label" style="margin-bottom:14px">📱 Scan to open dashboard on phone</div>
+    <div id="qr-container" style="display:inline-block;background:#fff;padding:16px;border-radius:14px"></div>
+    <div style="margin-top:12px;font-size:12px;color:var(--muted)">Make sure phone is on the same Wi-Fi</div>
+  </div>
+
+  <!-- SETUP ESP WI-FI CARD -->
+  <div class="card" style="margin-bottom:18px;background:rgba(28,255,149,.04);border:1.5px solid rgba(28,255,149,.25)">
+    <div class="card-label" style="margin-bottom:4px">📤 Connect ESP to Wi-Fi</div>
+    <div style="background:rgba(0,216,255,.07);border:1px solid rgba(0,216,255,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.7;color:var(--text)">
+      <b>How to set up ESP Wi-Fi:</b><br>
+      1. Press <b style="color:var(--green)">RST</b> on the ESP — it will start a hotspot called <b style="color:var(--green)">PlantPulse-Setup</b><br>
+      2. On your laptop/phone, <b>connect to that Wi-Fi hotspot</b> (password: <b>plantpulse123</b>)<br>
+      3. Come back to this page, enter your home Wi-Fi name + password below<br>
+      4. Click <b style="color:var(--green)">Send to ESP</b><br>
+      5. Reconnect your device back to your normal Wi-Fi
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div class="card-sub" style="margin-bottom:6px">Home Wi-Fi Name</div>
+        <input class="form-input" id="esp-setup-ssid" placeholder="Enter your Wi-Fi name (exact, case-sensitive)">
+      </div>
+      <div>
+        <div class="card-sub" style="margin-bottom:6px">Home Wi-Fi Password</div>
+        <input class="form-input" id="esp-setup-pass" type="password" placeholder="Enter your Wi-Fi password">
+      </div>
+      <button class="btn" style="background:var(--green);color:#000;font-weight:800;font-size:15px;padding:14px" onclick="pushWifiToESP()">
+        📡 Send to ESP & Connect
+      </button>
+      <div id="esp-push-status" style="font-size:13px;text-align:center;min-height:20px;padding:4px"></div>
+    </div>
+  </div>
+
+  <!-- CONNECTED DEVICES -->
+  <div class="section-header" style="margin-top:8px"><h2>📶 Connected Devices</h2></div>
+  <div id="devices-list">
+    <div class="card" style="text-align:center;color:var(--muted)">Loading devices…</div>
+  </div>
+</div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+/* Rich formatting inside AI chat bubbles */
+.msg-bubble h1,.msg-bubble h2,.msg-bubble h3,.msg-bubble h4{font-size:14.5px;margin:12px 0 6px;color:var(--green)}
+.msg-bubble p{margin:8px 0}
+.msg-bubble ul,.msg-bubble ol{margin:8px 0;padding-left:22px}
+.msg-bubble li{margin:4px 0}
+.msg-bubble strong{color:var(--green)}
+.msg-bubble code{background:rgba(0,0,0,.3);padding:1px 6px;border-radius:5px;font-size:12.5px}
+.msg-bubble pre{background:rgba(0,0,0,.3);padding:10px 12px;border-radius:8px;overflow-x:auto;margin:8px 0}
+.msg-bubble pre code{background:none;padding:0}
+.msg-bubble blockquote{border-left:3px solid var(--green);margin:8px 0;padding:2px 12px;color:var(--muted)}
+.msg-bubble .md-table-wrap{overflow-x:auto;margin:10px 0}
+.msg-bubble table{border-collapse:collapse;font-size:12.5px;min-width:60%}
+.msg-bubble th,.msg-bubble td{border:1px solid var(--border);padding:6px 10px;text-align:left;vertical-align:top}
+.msg-bubble th{background:rgba(28,255,149,.08);color:var(--green);font-weight:700}
+.msg-bubble hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+.msg-bubble input[type=checkbox]{margin-right:6px}
+/* animated typing indicator while waiting for AI reply */
+.typing-dots{display:inline-flex;gap:6px;align-items:center;padding:5px 2px}
+.typing-dots span{width:8px;height:8px;border-radius:50%;background:var(--green);opacity:.35;animation:typingWave 1.2s infinite ease-in-out}
+.typing-dots span:nth-child(2){animation-delay:.18s}
+.typing-dots span:nth-child(3){animation-delay:.36s}
+@keyframes typingWave{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-6px);opacity:1}}
+/* smart irrigation page */
+.pump-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.pump-stat{background:linear-gradient(180deg,rgba(14,27,22,.92),rgba(9,18,15,.92));border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.pump-stat .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pump-stat .val{font-size:22px;font-weight:800;margin-top:4px}
+.pipeline{display:flex;align-items:stretch;margin-bottom:18px;overflow-x:auto;padding-bottom:4px}
+.pipe-node{flex:1;min-width:150px;background:linear-gradient(180deg,rgba(14,27,22,.92),rgba(9,18,15,.92));border:1px solid var(--border);border-radius:14px;padding:13px 14px}
+.pipe-node .t{font-size:12px;font-weight:800;color:var(--green);margin-bottom:6px;letter-spacing:.04em}
+.pipe-node .d{font-size:12.5px;color:var(--muted);line-height:1.55}
+.pipe-link{width:34px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--green)}
+.pipe-link span{animation:flowArrow 1.2s ease-in-out infinite;font-size:15px}
+@keyframes flowArrow{0%,100%{opacity:.3;transform:translateX(-3px)}50%{opacity:1;transform:translateX(3px)}}
+.day-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:18px}
+.day-card{background:linear-gradient(180deg,rgba(14,27,22,.92),rgba(9,18,15,.92));border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center}
+.day-card.water{border-color:rgba(0,216,255,.5);background:rgba(0,216,255,.07)}
+.day-card .dw{font-size:12px;font-weight:800;color:var(--muted)}
+.day-card .ic{font-size:20px;margin:6px 0}
+.day-card .mm{font-size:11px;color:var(--muted);line-height:1.5}
+.day-card .act{margin-top:6px;font-size:11.5px;font-weight:800;color:var(--muted)}
+.day-card.water .act{color:var(--cyan)}
+@media (max-width:900px){.pump-stats{grid-template-columns:repeat(2,1fr)}.day-strip{grid-template-columns:repeat(4,1fr)}}
+.cards-row-5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px}
+@media (max-width:900px){.cards-row-5{grid-template-columns:repeat(2,1fr)}}
+.decision-evidence{margin-top:14px;border:1px solid rgba(0,216,255,.16);border-radius:14px;background:rgba(0,216,255,.025);overflow:hidden}
+.decision-evidence summary{padding:12px 14px;cursor:pointer;color:var(--cyan);font-size:13px;font-weight:700;list-style:none}
+.decision-evidence summary::-webkit-details-marker{display:none}
+.decision-evidence[open] summary{border-bottom:1px solid var(--border)}
+.evidence-flow{display:flex;align-items:center;gap:7px;padding:14px;overflow-x:auto}
+.flow-step{min-width:max-content;padding:8px 11px;border-radius:10px;background:rgba(28,255,149,.07);border:1px solid rgba(28,255,149,.16);font-size:11px;font-weight:700;color:#c9f5df}
+.flow-arrow{color:var(--green);font-size:13px}
+.evidence-heading{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:4px 14px 8px}
+.evidence-features{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:8px;padding:0 14px 16px}
+.evidence-feature{padding:10px;border-radius:11px;background:rgba(255,255,255,.025);border:1px solid var(--border)}
+.evidence-feature .name{font-size:10px;color:var(--muted);margin-bottom:5px}.evidence-feature .value{font-size:16px;font-weight:800;color:#e0f2e9}
+.evidence-note{font-size:11px;color:var(--muted);padding:0 14px 9px}
+.evidence-table{font-size:11.5px}.evidence-table th{white-space:nowrap}.evidence-table td{vertical-align:top;line-height:1.45;white-space:nowrap}.evidence-table td:last-child{white-space:normal;min-width:220px}
+.similarity-bar{width:76px;height:5px;border-radius:5px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden}.similarity-bar span{display:block;height:100%;background:var(--cyan);border-radius:5px}
+@media(max-width:900px){.evidence-features{grid-template-columns:repeat(2,1fr)}}
+.day-card.skel{animation:skelPulse 1.1s ease-in-out infinite}
+.day-card.skel .dw,.day-card.skel .ic,.day-card.skel .mm,.day-card.skel .act{background:rgba(146,184,166,.14);color:transparent;border-radius:6px}
+@keyframes skelPulse{0%,100%{opacity:.5}50%{opacity:1}}
+</style>
+<script>
+// ─── STATE ───
+let charts = {};
+let historyRange = '24h';
+let chatState = { threads: [], activeId: null, lastProvider: null };
+
+// ─── PAGE ROUTING ───
+function showPage(name, el, mobile=false) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if (!mobile) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+  } else {
+    document.querySelectorAll('.bnav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+  }
+  if (name === 'history') { loadHistory(historyRange); loadWatering(); }
+  if (name === 'pump') { loadPumpLog(); loadPumpPage(); }
+  if (name === 'insights') loadInsights();
+  if (name === 'chat') openChatPage();
+}
+
+// ─── CONNECTIVITY ───
+async function checkConn() {
+  try {
+    const r = await fetch('/api/dashboard');
+    if (r.ok) {
+      document.getElementById('connectivity').className = 'online';
+      document.getElementById('conn-label').textContent = 'Connected';
+      return true;
+    }
+  } catch(e) {}
+  document.getElementById('connectivity').className = '';
+  document.getElementById('conn-label').textContent = 'Offline';
+  return false;
+}
+
+// ─── CHART HELPERS ───
+function fmtLabel(ts, range) {
+  const d = new Date(ts);
+  if (range === '24h') return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  if (range === '7d') return d.toLocaleDateString([], {month:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  return d.toLocaleDateString([], {month:'short', day:'numeric'});
+}
+
+function decimateLabels(labels, data, range) {
+  const maxPts = range === '24h' ? 60 : range === '7d' ? 84 : 90;
+  if (labels.length <= maxPts) return {labels, data};
+  const step = Math.ceil(labels.length / maxPts);
+  return {
+    labels: labels.filter((_,i) => i % step === 0),
+    data:   data.filter((_,i)   => i % step === 0),
+  };
+}
+
+function buildChart(id, labels, data, color, label, unit, range) {
+  const ctx = document.getElementById(id).getContext('2d');
+  if (charts[id]) charts[id].destroy();
+  const dec = decimateLabels(labels, data, range);
+  const fmtted = dec.labels.map(l => fmtLabel(l, range));
+  charts[id] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: fmtted,
+      datasets: [{
+        label, data: dec.data, borderColor: color, backgroundColor: color+'22',
+        fill: true, tension: 0.4, borderWidth: 2,
+        pointRadius: dec.labels.length < 30 ? 3 : 0,
+        pointHoverRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y}${unit}` } }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#92b8a6', maxRotation: 0, autoSkip: true, maxTicksLimit: range === '30d' ? 10 : 12 },
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#92b8a6' },
+          suggestedMin: Math.max(0, (Math.min(...dec.data.filter(v=>v!=null)) || 0) - 5),
+          suggestedMax: (Math.max(...dec.data.filter(v=>v!=null)) || 100) + 5,
+        }
+      }
+    }
+  });
+}
+
+async function setHistoryFilter(range, btn) {
+  historyRange = range;
+  btn.closest('.chart-filters').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadHistory(range);
+}
+
+async function fetchHistory(range) {
+  const r = await fetch('/api/history?range='+range);
+  return await r.json();
+}
+
+// ─── DASHBOARD LOAD ───
+async function loadDashboard() {
+  try {
+    const dashboardUser = getUser();
+    const dashboardQuery = dashboardUser?.email ? '?user_email=' + encodeURIComponent(dashboardUser.email) : '';
+    const dash = await fetch('/api/dashboard' + dashboardQuery).then(r=>r.json());
+    // Status banner
+    document.getElementById('status-text').textContent = dash.plant_name + ' — ' + dash.status;
+    document.getElementById('status-dot').style.background = dash.status_color;
+    document.getElementById('status-banner').style.borderColor = dash.status_color+'44';
+    // Anomaly badge
+    if (dash.anomaly_count_24h > 0) {
+      document.getElementById('anomaly-badge').innerHTML = `<span class="badge badge-warning">${dash.anomaly_count_24h} alert${dash.anomaly_count_24h>1?'s':''} (24h)</span>`;
+    }
+    // Sensor health
+    if (dash.sensor_health) {
+      document.getElementById('sensor-health-alert').textContent = '⚠️ ' + dash.sensor_health;
+      document.getElementById('sensor-health-alert').style.display = 'block';
+    }
+    // Watering predictor
+    if (dash.next_water_in_hrs !== null && dash.next_water_in_hrs !== undefined) {
+      document.getElementById('predictor-card').style.display = 'flex';
+      document.getElementById('next-water-val').textContent = dash.next_water_in_hrs;
+      document.getElementById('next-water-unit').textContent = dash.next_water_in_hrs === 0 ? '— water now!' : 'hours';
+    }
+    // Moisture
+    const m = dash.latest.moisture_pct;
+    document.getElementById('moisture-pct').textContent = m != null ? m : '—';
+    document.getElementById('moisture-raw').textContent = 'Raw: ' + (dash.latest.raw ?? '—');
+    document.getElementById('moisture-scale').textContent = 'Scale: ' + (dash.latest.scale ?? '—') + '/10';
+    document.getElementById('moisture-source').textContent = 'Source: ' + (dash.latest.source ?? '—');
+    // Soil nutrient sensor snapshot
+    const nl = dash.latest;
+    const setTile = (id, val, ok) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = val != null ? val : '—';
+      el.style.color = val == null ? 'var(--muted)' : ok ? 'var(--green)' : 'var(--orange)';
+    };
+    setTile('sn-n', nl.n_val, nl.n_val >= 30 && nl.n_val <= 65);
+    setTile('sn-p', nl.p_val, nl.p_val >= 15 && nl.p_val <= 45);
+    setTile('sn-k', nl.k_val, nl.k_val >= 110 && nl.k_val <= 260);
+    setTile('sn-ph', nl.ph, nl.ph >= 5.5 && nl.ph <= 7.0);
+    setTile('sn-ec', nl.ec, nl.ec >= 0.8 && nl.ec <= 2.2);
+    // Ring
+    if (m != null) {
+      const circ = 295.3;
+      const offset = circ - (m/100)*circ;
+      document.getElementById('ring-fill').style.strokeDashoffset = offset;
+      const ringColor = m < dash.crop_info.dry ? '#ff5d73' : m > dash.crop_info.wet ? '#00d8ff' : '#1cff95';
+      document.getElementById('ring-fill').style.stroke = ringColor;
+    }
+    // Temp
+    document.getElementById('temp-val').textContent = dash.latest.temp != null ? dash.latest.temp : '—';
+    document.getElementById('temp-status').textContent = dash.latest.temp > dash.crop_info.heat ? '🔥 Too hot' : 'OK';
+    // Humidity
+    document.getElementById('hum-val').textContent = dash.latest.humidity != null ? dash.latest.humidity : '—';
+    document.getElementById('hum-status').textContent = dash.latest.humidity < dash.crop_info.hum_min ? '🌬️ Low' : 'OK';
+    // Soil sensor snapshot (NPK / pH / EC)
+    const sensorSnapshot = {
+      'sn-n': dash.latest.n_val,
+      'sn-p': dash.latest.p_val,
+      'sn-k': dash.latest.k_val,
+      'sn-ph': dash.latest.ph,
+      'sn-ec': dash.latest.ec
+    };
+    Object.entries(sensorSnapshot).forEach(([id, value]) => {
+      document.getElementById(id).textContent = value != null ? value : '—';
+    });
+    // Last watered
+    if (dash.last_watered) {
+      const ago = timeSince(dash.last_watered.ts);
+      document.getElementById('last-water-val').textContent = ago;
+      document.getElementById('last-water-ts').textContent = fmtTs(dash.last_watered.ts);
+    }
+    // Crop
+    document.getElementById('crop-display').textContent = dash.crop_name + ' · ' + capitalize(dash.growth_stage);
+    document.getElementById('stage-display').textContent = dash.stage_info.note || '';
+    document.getElementById('crop-note').textContent = dash.crop_info.note || '';
+    // AI summary
+    const s = dash.latest;
+    let summary = `Moisture: ${s.moisture_pct ?? '—'}% | Temp: ${s.temp ?? '—'}°C | Humidity: ${s.humidity ?? '—'}%\nStatus: ${dash.status}`;
+    if (dash.drying_rate_per_hr) summary += `\nDrying rate: ${dash.drying_rate_per_hr}%/hr`;
+    if (dash.next_water_in_hrs != null) summary += ` · Water in ~${dash.next_water_in_hrs}h`;
+    document.getElementById('ai-summary').textContent = summary;
+  } catch(e) { console.error(e); }
+}
+
+// ─── HISTORY PAGE ───
+function buildMultiChart(id, labels, range, datasets, y2) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (charts[id]) charts[id].destroy();
+  const fmtted = labels.map(l => fmtLabel(l, range));
+  const scales = {
+    x: { grid: { color: 'rgba(255,255,255,.04)' },
+         ticks: { color: '#92b8a6', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+    y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#92b8a6' } },
+  };
+  if (y2) scales.y2 = { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#92b8a6' } };
+  charts[id] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: fmtted, datasets: datasets.map(d => ({ tension: .35, borderWidth: 2, pointRadius: 0, fill: false, ...d })) },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#92b8a6', font: { size: 11 } } } },
+      scales,
+    },
+  });
+}
+
+async function loadHistory(range) {
+  const data = await fetchHistory(range);
+  buildChart('history-chart', data.labels, data.moisture, '#1cff95', 'Moisture', '%', range);
+  buildMultiChart('npk-chart', data.labels, range, [
+    { label: 'N (nitrogen)', data: data.n, borderColor: '#1cff95' },
+    { label: 'P (phosphorus)', data: data.p, borderColor: '#00d8ff' },
+    { label: 'K (potassium)', data: data.k, borderColor: '#ff8a2a' },
+  ]);
+  buildMultiChart('phec-chart', data.labels, range, [
+    { label: 'pH', data: data.ph, borderColor: '#e0f2e9' },
+    { label: 'EC (mS/cm)', data: data.ec, borderColor: '#ff5d73', yAxisID: 'y2' },
+  ], true);
+  // Anomalies
+  const tbody = document.getElementById('anomaly-tbody');
+  tbody.innerHTML = '';
+  const ar = await fetch('/api/anomalies?range='+range).then(r=>r.json());
+  ar.anomalies.forEach(a => {
+    const tr = document.createElement('tr');
+    const badge = `<span class="badge badge-${a.severity}">${a.severity}</span>`;
+    tr.innerHTML = `<td>${fmtTs(a.ts)}</td><td>${a.type.replace(/_/g,' ')}</td><td>${badge}</td><td>${a.message}</td>`;
+    tbody.appendChild(tr);
+  });
+  if (!ar.anomalies.length) tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center">No anomalies in this range 🎉</td></tr>';
+}
+
+// ─── CHAT ───
+async function refreshChatThreads() {
+  try {
+    const u = getUser();
+    const userParam = u && u.email ? '&user_email=' + encodeURIComponent(u.email) : '';
+    const r = await fetch('/api/chat/threads?limit=20' + userParam);
+    const data = await r.json();
+    chatState.threads = data.threads || [];
+    renderChatThreads();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderChatThreads() {
+  const list = document.getElementById('chat-thread-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!chatState.threads.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;line-height:1.6">No saved chats yet. Start a new conversation to build your history.</div>';
+    return;
+  }
+  chatState.threads.forEach(thread => {
+    const item = document.createElement('div');
+    item.className = 'thread-item' + (thread.id === chatState.activeId ? ' active' : '');
+    const updated = thread.updated_ts ? timeSince(thread.updated_ts) : 'Just now';
+    item.innerHTML = `
+      <div class="thread-item-title"></div>
+      <div class="thread-item-preview"></div>
+      <div class="thread-item-meta"></div>
+    `;
+    item.querySelector('.thread-item-title').textContent = thread.title || 'New chat';
+    item.querySelector('.thread-item-preview').textContent = thread.preview || 'No messages yet';
+    item.querySelector('.thread-item-meta').textContent = `${thread.message_count || 0} messages · ${updated}`;
+    item.addEventListener('click', () => openChatThread(thread.id));
+    list.appendChild(item);
+  });
+}
+
+function setChatTitle(title) {
+  const el = document.getElementById('chat-thread-title');
+  if (el) el.textContent = title || 'New chat';
+}
+
+function setQuickPromptsVisible(visible) {
+  const qp = document.getElementById('quick-prompts');
+  if (qp) qp.style.display = visible ? 'flex' : 'none';
+}
+
+function clearChatMessages() {
+  const msgs = document.getElementById('chat-msgs');
+  if (msgs) msgs.innerHTML = '';
+  setQuickPromptsVisible(true);
+}
+
+function appendMsg(text, role, meta='') {
+  setQuickPromptsVisible(false);
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  if (role === 'ai' && window.marked) {
+    try {
+      bubble.innerHTML = marked.parse(text, { breaks: true });
+      // keep wide tables scrollable inside the bubble
+      bubble.querySelectorAll('table').forEach(t => {
+        const wrap = document.createElement('div');
+        wrap.className = 'md-table-wrap';
+        t.parentNode.insertBefore(wrap, t);
+        wrap.appendChild(t);
+      });
+    } catch (e) {
+      bubble.textContent = text;
+    }
+  } else {
+    bubble.textContent = text;
+  }
+  div.appendChild(bubble);
+  if (meta) {
+    const metaEl = document.createElement('div');
+    metaEl.className = 'msg-meta';
+    metaEl.textContent = meta;
+    div.appendChild(metaEl);
+  }
+  const msgs = document.getElementById('chat-msgs');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function appendSysNotice(text) {
+  const div = document.createElement('div');
+  div.className = 'sys-notice';
+  div.textContent = text;
+  const msgs = document.getElementById('chat-msgs');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendTypingIndicator() {
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = '<span class="typing-dots"><span></span><span></span><span></span></span>';
+  div.appendChild(bubble);
+  const metaEl = document.createElement('div');
+  metaEl.className = 'msg-meta';
+  metaEl.textContent = 'AI is thinking…';
+  div.appendChild(metaEl);
+  const msgs = document.getElementById('chat-msgs');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function renderChatMessages(messages) {
+  clearChatMessages();
+  (messages || []).forEach(m => {
+    const role = m.role === 'assistant' ? 'ai' : 'user';
+    appendMsg(m.content, role, `${m.role === 'assistant' ? 'Assistant' : 'You'} · ${fmtTs(m.ts)}`);
+  });
+}
+
+async function startNewChat() {
+  chatState.activeId = null;
+  setChatTitle('New chat');
+  clearChatMessages();
+  await refreshChatThreads();
+  renderChatThreads();
+  const input = document.getElementById('chat-input');
+  if (input) input.focus();
+}
+
+async function openChatThread(threadId) {
+  const r = await fetch('/api/chat/threads/' + threadId);
+  const data = await r.json();
+  chatState.activeId = data.thread.id;
+  setChatTitle(data.thread.title || 'Chat');
+  renderChatMessages(data.messages || []);
+  await refreshChatThreads();
+  renderChatThreads();
+}
+
+function setAiBanner(banner, text, tone) {
+  const colors = tone === 'ok'
+    ? { fg: 'var(--green)', bg: 'rgba(28,255,149,.06)', bd: 'rgba(28,255,149,.2)' }
+    : { fg: 'var(--orange)', bg: 'rgba(255,138,42,.08)', bd: 'rgba(255,138,42,.25)' };
+  banner.textContent = text;
+  banner.style.color = colors.fg;
+  banner.style.background = colors.bg;
+  banner.style.border = '1px solid ' + colors.bd;
+  banner.style.display = 'block';
+}
+
+function updateModelChip(provider, model, online) {
+  const chip = document.getElementById('model-chip');
+  if (!chip) return;
+  const names = { gemini: 'Gemini', groq: 'Groq' };
+  const label = online ? (names[provider] || provider || 'AI') : 'Offline';
+  chip.title = online && model ? model : 'Smart offline mode';
+  chip.innerHTML = `<span class="dot" style="background:${online ? 'var(--green)' : 'var(--orange)'}"></span>${label}`;
+}
+
+async function checkAiStatus() {
+  const banner = document.getElementById('chat-offline-banner');
+  if (!banner) return;
+  try {
+    const s = await fetch('/api/chat/status').then(r => r.json());
+    if (s.online) {
+      banner.style.display = 'none';
+      updateModelChip(s.provider, s.model, true);
+      if (!chatState.lastProvider) chatState.lastProvider = s.provider;
+      return;
+    }
+    updateModelChip(null, null, false);
+    setAiBanner(banner, '📴 You are currently offline — ' + (s.reason || 'AI is unreachable') + '. Replies will use smart offline mode.', 'warn');
+  } catch (e) {
+    updateModelChip(null, null, false);
+    setAiBanner(banner, '📴 You are currently offline — the PlantPulse server is unreachable.', 'warn');
+  }
+}
+
+async function openChatPage() {
+  checkAiStatus();
+  await refreshChatThreads();
+  await startNewChat();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  if (!chatState.activeId) {
+    setChatTitle('New chat');
+  }
+  input.value = '';
+  appendMsg(msg, 'user', `You · ${fmtTs(new Date().toISOString())}`);
+  const thinking = appendTypingIndicator();
+  try {
+    const payload = {message: msg};
+    if (chatState.activeId) payload.thread_id = chatState.activeId;
+    const currentUser = getUser();
+    if (currentUser && currentUser.first_name) payload.user_name = currentUser.first_name;
+    if (currentUser && currentUser.email) payload.user_email = currentUser.email;
+    const aborter = new AbortController();
+    const timer = setTimeout(() => aborter.abort(), 120000);
+    const r = await fetch('/api/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+      signal: aborter.signal
+    });
+    clearTimeout(timer);
+    const data = await r.json();
+    chatState.activeId = data.thread_id || chatState.activeId;
+    setChatTitle((data.thread && data.thread.title) || 'New chat');
+    thinking.remove();
+    const providerNames = { gemini: 'Gemini', groq: 'Groq' };
+    const providerLabel = providerNames[data.provider] || 'Offline';
+    // announce a provider switch only once, as a centered notice
+    if (data.fallback_reason && chatState.lastProvider && chatState.lastProvider !== data.provider) {
+      appendSysNotice(`⚠️ ${data.fallback_reason} — switched to ${providerLabel}`);
+    }
+    chatState.lastProvider = data.provider;
+    updateModelChip(data.provider, data.model, data.provider !== 'offline');
+    appendMsg(data.reply, 'ai', providerLabel);
+    await refreshChatThreads();
+    renderChatThreads();
+  } catch (e) {
+    thinking.remove();
+    const hint = e.name === 'AbortError'
+      ? 'The AI took too long to answer. Your message was sent — reopen this chat in a moment to see the reply.'
+      : 'Lost connection while waiting for the reply. Your message was sent — reopen this chat from "Recent chats" to see the answer.';
+    appendMsg(hint, 'ai', 'Connection issue');
+    console.error(e);
+  }
+}
+function sendQuick(msg) { document.getElementById('chat-input').value = msg; sendChat(); }
+
+// ─── WATERING ───
+async function logWatering() {
+  const note = document.getElementById('water-note').value;
+  await fetch('/api/water', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({note})});
+  document.getElementById('water-note').value = '';
+  loadWatering();
+  loadDashboard();
+}
+async function loadWatering() {
+  const r = await fetch('/api/watering').then(r=>r.json());
+  const tbody = document.getElementById('watering-tbody');
+  tbody.innerHTML = '';
+  r.logs.forEach(l => {
+    const badge = l.method === 'manual'
+      ? '<span class="badge badge-ok">Manual</span>'
+      : '<span class="badge badge-info">Auto-detected</span>';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fmtTs(l.ts)}</td><td>${badge}</td><td>${l.moisture_before ?? '—'}%</td><td>${l.note ?? '—'}</td>`;
+    tbody.appendChild(tr);
+  });
+  if (!r.logs.length) tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center">No watering events yet</td></tr>';
+}
+
+// ─── PUMP ───
+async function pumpOn() {
+  await fetch('/api/pump/on', {method:'POST'});
+  document.getElementById('pump-status-text').textContent = '🟢 Pump is ON';
+  document.getElementById('pump-status-text').style.color = 'var(--green)';
+}
+async function pumpOff() {
+  await fetch('/api/pump/off', {method:'POST'});
+  document.getElementById('pump-status-text').textContent = '⚫ Pump is OFF';
+  document.getElementById('pump-status-text').style.color = 'var(--muted)';
+  loadPumpLog();
+}
+async function setPumpMode(mode) {
+  await fetch('/api/pump/mode', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mode})});
+  applyPumpModeUI(mode);
+}
+
+function applyPumpModeUI(mode) {
+  document.getElementById('mode-manual').classList.toggle('active', mode==='manual');
+  document.getElementById('mode-auto').classList.toggle('active', mode==='auto');
+  const manual = document.getElementById('manual-section');
+  const auto = document.getElementById('auto-section');
+  if (manual) manual.style.display = mode === 'manual' ? 'block' : 'none';
+  if (auto) auto.style.display = mode === 'auto' ? 'block' : 'none';
+}
+async function loadPumpLog() {
+  const r = await fetch('/api/pump/log').then(r=>r.json());
+  const tbody = document.getElementById('pump-tbody');
+  tbody.innerHTML = '';
+  r.logs.forEach(l => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fmtTs(l.start_ts)}</td><td>${l.duration_sec ? l.duration_sec+'s' : '—'}</td><td>${l.mode}</td><td>${l.stop_reason}</td>`;
+    tbody.appendChild(tr);
+  });
+  if (!r.logs.length) tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center">No pump cycles logged</td></tr>';
+}
+
+// ─── SETTINGS ───
+async function loadSettings() {
+  const s = await fetch('/api/settings').then(r=>r.json());
+  document.getElementById('s-air-value').value = s.air_value || 900;
+  document.getElementById('s-water-value').value = s.water_value || 350;
+  document.getElementById('s-ntfy').value = s.ntfy_topic || '';
+  document.getElementById('s-lat').value = s.latitude || '19.0760';
+  document.getElementById('s-lon').value = s.longitude || '72.8777';
+  document.getElementById('s-outdoor').value = s.plant_outdoor || 'true';
+}
+async function saveSettings() {
+  const body = {
+    air_value: document.getElementById('s-air-value').value,
+    water_value: document.getElementById('s-water-value').value,
+    ntfy_topic: document.getElementById('s-ntfy').value,
+    latitude: document.getElementById('s-lat').value,
+    longitude: document.getElementById('s-lon').value,
+    plant_outdoor: document.getElementById('s-outdoor').value,
+  };
+  await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  document.getElementById('settings-msg').textContent = '✅ Settings saved!';
+  setTimeout(() => document.getElementById('settings-msg').textContent = '', 3000);
+  loadDashboard();
+  loadSmartPlan(true);
+}
+function exportCSV(range) { window.location.href = '/api/export/csv?range='+range; }
+
+// ─── SMART ADVICE CARDS (motor + fertilizer) ───
+async function loadAdvice() {
+  try {
+    const adviceUser = getUser();
+    const adviceQuery = adviceUser?.email ? '?user_email=' + encodeURIComponent(adviceUser.email) : '';
+    const [mot, fert] = await Promise.all([
+      fetch('/api/advice/motor').then(r => r.json()),
+      fetch('/api/advice/fertilizer' + adviceQuery).then(r => r.json()),
+    ]);
+    document.getElementById('mot-head').textContent = mot.headline;
+    const mr = document.getElementById('mot-reasons');
+    mr.innerHTML = '';
+    (mot.reasons || []).forEach(t => { const li = document.createElement('li'); li.textContent = t; mr.appendChild(li); });
+
+    document.getElementById('fert-head').textContent = fert.headline;
+    const fr = document.getElementById('fert-reasons');
+    fr.innerHTML = '';
+    (fert.reasons || []).forEach(t => { const li = document.createElement('li'); li.textContent = t; fr.appendChild(li); });
+    const fs = document.getElementById('fert-sensors');
+    if (fert.sensors) {
+      fs.textContent = `Live soil sensors — N: ${fert.sensors.n} · P: ${fert.sensors.p} · K: ${fert.sensors.k} mg/kg · pH: ${fert.sensors.ph} · EC: ${fert.sensors.ec} mS/cm`;
+    } else {
+      fs.textContent = '';
+    }
+  } catch (e) {
+    console.error('advice failed', e);
+  }
+}
+
+// ─── ML PREDICTIONS ───
+async function loadMlPredictions() {
+  const el = document.getElementById('ins-ml');
+  try {
+    const p = await fetch('/api/ml/predict').then(r => { if (!r.ok) throw new Error('not ready'); return r.json(); });
+    const anomaly = p.sensor_anomalies_24h > 0
+      ? `<span style="color:var(--orange)">⚠ ${p.sensor_anomalies_24h} abnormal reading(s) in last 24h</span>`
+      : '<span style="color:var(--green)">✅ Sensors normal</span>';
+    el.innerHTML =
+      `💧 Needs water within 24h: <b style="color:var(--green)">${p.irrigation_probability_pct}%</b> probability` +
+      ` · predicted moisture loss ${p.predicted_moisture_drop_24h_pct}%` +
+      (p.suggested_water_ml ? ` · give ~<b>${p.suggested_water_ml}ml</b>` : ' · no watering suggested') + '<br>' +
+      `🍄 Disease risk within 48h: <b style="color:${p.disease_probability_pct >= 50 ? 'var(--orange)' : 'var(--green)'}">${p.disease_probability_pct}%</b><br>` +
+      `📡 ${anomaly}<br>` +
+      `🌾 Yield outlook: <b style="color:var(--green)">${p.yield_index}/100 (${p.yield_grade})</b> — ${p.yield_note}<br>` +
+      `<span style="font-size:12px">Model test accuracy — irrigation: ${p.metrics.irrigation_accuracy_pct}% · disease: ${p.metrics.disease_accuracy_pct}% · ` +
+      `water error ±${p.metrics.water_mae_pct}% moisture · trained ${timeSince(p.trained_ts)}</span>`;
+  } catch (e) {
+    el.textContent = 'Models not trained yet — click Retrain Models below.';
+  }
+}
+
+async function retrainMl() {
+  const st = document.getElementById('ins-ml-status');
+  st.textContent = '🧠 Training on your farm history…';
+  try {
+    const r = await fetch('/api/ml/train', { method: 'POST' });
+    const data = await r.json();
+    st.textContent = data.ready ? `✅ Trained on ${data.samples} days` : (data.message || 'Not enough data');
+    loadMlPredictions();
+  } catch (e) {
+    st.textContent = '⚠ Training failed';
+  }
+}
+
+// ─── AI DAILY DECISION ───
+let currentDecisionId = null;
+
+function renderDecisionEvidence(evidence) {
+  const panel = document.getElementById('ad-evidence');
+  if (!evidence) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  document.getElementById('ad-flow').innerHTML = (evidence.flow || []).map((step, i) =>
+    `${i ? '<span class="flow-arrow">→</span>' : ''}<span class="flow-step">${step}</span>`
+  ).join('');
+  document.getElementById('ad-features').innerHTML = (evidence.current_features || []).map(f =>
+    `<div class="evidence-feature"><div class="name">${f.label}</div><div class="value">${f.value}${f.unit}</div></div>`
+  ).join('');
+  document.getElementById('ad-match-note').textContent = evidence.matching_note || '';
+  const analogs = evidence.analogs || [];
+  const maxDistance = Math.max(...analogs.map(a => a.distance), 1);
+  document.getElementById('ad-analogs').innerHTML = analogs.length ? analogs.map(a => {
+    const closeness = Math.max(12, Math.round(100 - (a.distance / maxDistance) * 75));
+    const o = a.outcome || {};
+    return `<tr>
+      <td><b style="color:var(--cyan)">#${a.rank}</b> · ${a.date}</td>
+      <td>${a.distance} away<div class="similarity-bar"><span style="width:${closeness}%"></span></div></td>
+      <td>${a.avg_moisture}% / ${a.min_moisture}%</td>
+      <td>${a.drop}%</td><td>${a.max_temp}°C</td><td>${a.avg_hum}%</td>
+      <td>Min moisture <b>${o.min_moisture_next48h ?? '—'}%</b> · ${o.waterings_next48h ?? 0} watering(s) · ${o.risk_hours_next48h ?? 0}h fungal risk</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7">Not enough completed historical days yet.</td></tr>';
+}
+
+function renderAiDecision(data) {
+  const d = data.decision;
+  currentDecisionId = data.id;
+  document.getElementById('ad-empty').style.display = 'none';
+  document.getElementById('ad-body').style.display = 'block';
+  document.getElementById('ad-headline').textContent = d.water_today
+    ? `💧 Water today — ${d.water_time}${d.water_amount_ml ? ' · ~' + d.water_amount_ml + 'ml' : ''}`
+    : '🚫 No watering needed today';
+  document.getElementById('ad-details').innerHTML =
+    `🍄 <b>Disease:</b> ${d.disease_action || '—'}<br>` +
+    (d.fertilizer_advice ? `🧪 <b>Fertilizer:</b> ${d.fertilizer_advice}<br>` : '') +
+    `💰 <b>Profit tip:</b> ${d.profit_tip || '—'}`;
+  document.getElementById('ad-reason').textContent =
+    `🧠 ${d.reasoning || ''} (confidence ${d.confidence}%)`;
+  const g = document.getElementById('ad-guard');
+  if (data.guardrails && data.guardrails.length) {
+    g.textContent = '🛡 ' + data.guardrails.join(' · ');
+    g.style.display = 'block';
+  } else {
+    g.style.display = 'none';
+  }
+  renderDecisionEvidence(data.evidence);
+  const providerNames = { gemini: 'Gemini', groq: 'Groq', 'analog-vote': 'Offline analog vote' };
+  document.getElementById('ad-meta').textContent =
+    `${providerNames[data.provider] || data.provider} · ${data.analogs ? data.analogs.length + ' similar days' : ''}` +
+    (data.feedback_used ? ` · ${data.feedback_used} past corrections applied` : '');
+  document.getElementById('ad-btn').textContent = '🔄 Re-decide';
+  document.getElementById('ad-fb-status').textContent = '';
+}
+
+async function generateAiDecision() {
+  const btn = document.getElementById('ad-btn');
+  btn.disabled = true;
+  btn.textContent = '🧠 Comparing with similar days…';
+  try {
+    const decisionUser = getUser();
+    const decisionQuery = decisionUser?.email ? '?user_email=' + encodeURIComponent(decisionUser.email) : '';
+    const r = await fetch('/api/ai/decision/generate' + decisionQuery, { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) {
+      document.getElementById('ad-empty').textContent = '⚠ ' + (data.detail || 'Could not decide');
+      document.getElementById('ad-empty').style.display = 'block';
+    } else {
+      renderAiDecision(data);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  btn.disabled = false;
+  if (btn.textContent.includes('Comparing')) btn.textContent = '🌅 Get Today\'s AI Decision';
+}
+
+async function sendDecisionFeedback(verdict) {
+  if (!currentDecisionId) return;
+  let note = null;
+  if (verdict === 'down') note = prompt('What was wrong? (helps the AI learn — optional)') || null;
+  const r = await fetch('/api/ai/feedback', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ decision_id: currentDecisionId, verdict, note }),
+  });
+  if (r.ok) document.getElementById('ad-fb-status').textContent = '✅ Saved — AI will remember this on similar days';
+}
+
+async function loadLatestDecision() {
+  try {
+    const decisionUser = getUser();
+    const decisionQuery = decisionUser?.email ? '?user_email=' + encodeURIComponent(decisionUser.email) : '';
+    const r = await fetch('/api/ai/decision/latest' + decisionQuery).then(x => x.json());
+    const today = new Date().toISOString().slice(0, 10);
+    if (r.decision && r.day_key === today) {
+      renderAiDecision({ id: r.id, decision: r.decision, provider: r.provider, guardrails: [], analogs: r.analogs, evidence: r.evidence });
+      document.getElementById('ad-meta').textContent = `decided ${timeSince(r.created_ts)}`;
+    }
+  } catch (e) { /* card stays in empty state */ }
+}
+
+// ─── FARM REPORT ───
+async function loadInsights() {
+  try {
+    const [ins, pl] = await Promise.all([
+      fetch('/api/insights').then(r => r.json()),
+      fetch('/api/pump/plan').then(r => r.json()),
+    ]);
+
+    // savings card
+    const s = ins.savings;
+    document.getElementById('ins-sav-head').textContent =
+      `${s.litres_saved_per_plant} L · ₹${s.rupees_saved_per_plant} per plant`;
+    document.getElementById('ins-sav-sub').innerHTML =
+      `${s.skipped_waterings} waterings skipped (rain or soil already moist) vs watering blindly every day.<br>` +
+      `At farm scale (${s.farm_scale_plants} plants): <b style="color:var(--green)">${s.farm_litres_saved} L · ₹${s.farm_rupees_saved} saved</b> this month.`;
+
+    // disease card
+    const dz = document.getElementById('ins-disease');
+    dz.textContent = ins.disease.message;
+    dz.style.color = ins.disease.risk ? 'var(--orange)' : 'var(--green)';
+
+    // next 7 days strip
+    const strip = document.getElementById('ins-week');
+    strip.innerHTML = '';
+    (pl.days || []).forEach((day, i) => {
+      const dt = new Date(day.date + 'T12:00:00');
+      const wd = i === 0 ? 'Today' : dt.toLocaleDateString(undefined, { weekday: 'short' });
+      const rainy = day.rain_prob >= 60;
+      const card = document.createElement('div');
+      card.className = 'day-card' + (day.water ? ' water' : '');
+      card.innerHTML = `<div class="dw"></div><div class="ic">${day.water ? '💧' : rainy ? '🌧️' : '☀️'}</div>
+        <div class="mm">${Math.round(day.max_temp)}°C · ${day.rain_prob}%🌧<br>soil → ${day.moisture_end}%</div>
+        <div class="act">${day.water ? 'WATER' : rainy ? 'Rain covers it' : 'No water'}</div>`;
+      card.querySelector('.dw').textContent = wd;
+      strip.appendChild(card);
+    });
+
+    // monthly chart
+    const labels = ins.months.map(m => {
+      const [y, mo] = m.month.split('-');
+      return new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: 'short' });
+    });
+    if (charts['ins-months']) charts['ins-months'].destroy();
+    charts['ins-months'] = new Chart(document.getElementById('ins-months'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: '💧 Waterings', data: ins.months.map(m => m.waterings), backgroundColor: 'rgba(28,255,149,.55)', borderRadius: 4 },
+          { label: '🔥 Stress days', data: ins.months.map(m => m.stress_days), backgroundColor: 'rgba(255,138,42,.55)', borderRadius: 4 },
+          { label: '🍄 Fungal-risk days', data: ins.months.map(m => m.risk_days), backgroundColor: 'rgba(0,216,255,.45)', borderRadius: 4 },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#92b8a6', font: { size: 12 } } } },
+        scales: {
+          x: { ticks: { color: '#92b8a6' }, grid: { color: 'rgba(146,184,166,.08)' } },
+          y: { ticks: { color: '#92b8a6' }, grid: { color: 'rgba(146,184,166,.08)' }, beginAtZero: true },
+        },
+      },
+    });
+
+    // ML predictions
+    loadMlPredictions();
+
+    // backtest accuracy
+    fetch('/api/ai/backtest').then(r => r.json()).then(bt => {
+      const el = document.getElementById('ins-backtest');
+      if (!bt.ready) { el.textContent = bt.message; return; }
+      el.innerHTML =
+        `<span style="font-size:24px;font-weight:800;color:var(--green)">${bt.accuracy_pct}% accurate</span> ` +
+        `over ${bt.days_tested} days (leave-one-out backtest).<br>` +
+        `Caught <b style="color:var(--green)">${bt.dryouts_caught} of ${bt.dryouts_total}</b> upcoming dry-outs · ` +
+        `missed ${bt.dryouts_missed} · ${bt.false_alarms} false alarms.<br>` +
+        `<span style="font-size:12px">Model: ${bt.model}</span>`;
+    }).catch(() => {});
+
+    // planting window
+    const monthName = mk => { const [y, mo] = mk.split('-'); return new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: 'long' }); };
+    if (ins.best_months.length) {
+      document.getElementById('ins-plant').innerHTML =
+        `For ${ins.crop_name}, temperatures were in the ideal growing range most often in: ` +
+        ins.best_months.map(b => `<b style="color:var(--green)">${monthName(b.month)}</b> (${b.score}% of hours ideal)`).join(' · ') +
+        `.<br>Plant a few weeks before these months to hit peak growth when conditions are best.`;
+    } else {
+      document.getElementById('ins-plant').textContent = 'Not enough data yet — connect sensors and come back after a few weeks.';
+    }
+  } catch (e) {
+    console.error('insights failed', e);
+  }
+}
+
+// ─── SMART IRRIGATION PAGE ───
+async function loadPumpPage() {
+  try {
+    const [d, sp, pl, ps] = await Promise.all([
+      fetch('/api/dashboard').then(r => r.json()),
+      fetch('/api/smart-plan').then(r => r.json()),
+      fetch('/api/pump/plan').then(r => r.json()),
+      fetch('/api/pump/status').then(r => r.json()),
+    ]);
+    const L = d.latest || {};
+    document.getElementById('pp-moist').textContent = L.moisture_pct != null ? L.moisture_pct + '%' : '—';
+    document.getElementById('pp-temp').textContent = L.temp != null ? L.temp + '°C' : '—';
+    document.getElementById('pp-hum').textContent = L.humidity != null ? L.humidity + '%' : '—';
+    document.getElementById('pp-pump').textContent = ps.on ? '🟢 Running' : 'Idle';
+
+    document.getElementById('pn-sensors').textContent =
+      L.moisture_pct != null
+        ? `Moisture ${L.moisture_pct}% · ${L.temp != null ? L.temp + '°C' : 'no temp'} · humidity ${L.humidity ?? '—'}% · N/P/K ${L.n_val ?? '—'}/${L.p_val ?? '—'}/${L.k_val ?? '—'} · pH ${L.ph ?? '—'} · EC ${L.ec ?? '—'}`
+        : 'No sensor data yet';
+    document.getElementById('pn-weather').textContent =
+      sp.weather && sp.weather.max_temp !== null
+        ? `Next 24h: ${sp.weather.max_rain_prob ?? 0}% rain (${sp.weather.total_rain_mm ?? 0}mm) · up to ${sp.weather.max_temp}°C`
+        : 'Forecast unavailable';
+    document.getElementById('pn-brain').textContent = (sp.reasons && sp.reasons[0]) || 'Collecting data…';
+    document.getElementById('pn-action').textContent = sp.headline || '—';
+
+    applyPumpModeUI(pl.auto.mode);
+
+    // show the last saved AI plan, if any
+    const saved = await fetch('/api/pump/plan/saved').then(r => r.json());
+    if (saved.plan) {
+      renderPlanDays(saved.plan.days);
+      const meta = document.getElementById('plan-meta');
+      meta.textContent = `AI plan generated ${timeSince(saved.plan.created_ts)} · saved in your plant's database`;
+      meta.style.display = 'block';
+      document.getElementById('plan-empty').style.display = 'none';
+      if (saved.plan.ai_summary) {
+        const ai = document.getElementById('plan-ai');
+        ai.textContent = '🤖 ' + saved.plan.ai_summary;
+        ai.style.display = 'block';
+      }
+      document.getElementById('gen-plan-btn').textContent = '🔄 Regenerate Plan';
+    }
+
+    document.getElementById('pa-on').value = pl.auto.on_below;
+    document.getElementById('pa-off').value = pl.auto.off_at;
+    document.getElementById('pa-ws').value = pl.auto.window_start;
+    document.getElementById('pa-we').value = pl.auto.window_end;
+    const optionalFields = {temp_max:'pa-temp',humidity_max:'pa-hum',n_min:'pa-n',p_min:'pa-p',k_min:'pa-k',ec_max:'pa-ec',ph_min:'pa-ph-min',ph_max:'pa-ph-max',rain_max:'pa-rain',fertilizer_concentration:'pa-fert-conc',fertilizer_tank_liters:'pa-fert-tank'};
+    Object.entries(optionalFields).forEach(([key,id]) => document.getElementById(id).value = pl.auto[key] || '');
+    document.getElementById('pa-action').value = pl.auto.action_type || 'water';
+    document.getElementById('pa-fert-method').value = pl.auto.fertilizer_method || 'fertigation';
+    toggleFertilizerFields();
+    updatePumpRuleSummary(pl.auto);
+  } catch (e) {
+    console.error('pump page failed', e);
+  }
+}
+
+function renderPlanDays(days) {
+  const strip = document.getElementById('day-strip');
+  strip.innerHTML = '';
+  strip.style.display = 'grid';
+  (days || []).forEach((day, i) => {
+    const dt = new Date(day.date + 'T12:00:00');
+    const wd = i === 0 ? 'Today' : dt.toLocaleDateString(undefined, { weekday: 'short' });
+    const rainy = day.rain_prob >= 60;
+    const card = document.createElement('div');
+    card.className = 'day-card' + (day.water ? ' water' : '');
+    card.innerHTML = `
+      <div class="dw"></div>
+      <div class="ic">${day.water ? '💧' : rainy ? '🌧️' : '☀️'}</div>
+      <div class="mm">${Math.round(day.max_temp)}°C · ${day.rain_prob}%🌧<br>soil → ${day.moisture_end}%</div>
+      <div class="act">${day.water ? 'WATER' : rainy ? 'Rain covers it' : 'No water'}</div>`;
+    card.querySelector('.dw').textContent = wd;
+    strip.appendChild(card);
+  });
+}
+
+async function generatePlan() {
+  const btn = document.getElementById('gen-plan-btn');
+  const prog = document.getElementById('plan-progress');
+  const strip = document.getElementById('day-strip');
+  btn.disabled = true;
+  document.getElementById('plan-empty').style.display = 'none';
+  document.getElementById('plan-ai').style.display = 'none';
+  document.getElementById('plan-meta').style.display = 'none';
+  // skeleton calendar while the real pipeline runs
+  strip.style.display = 'grid';
+  strip.innerHTML = Array.from({ length: 7 }).map(() =>
+    '<div class="day-card skel"><div class="dw">&nbsp;</div><div class="ic">&nbsp;</div><div class="mm">&nbsp;<br>&nbsp;</div><div class="act">&nbsp;</div></div>'
+  ).join('');
+  const steps = [
+    '📡 Reading live sensor data…',
+    '🌦 Fetching 7-day weather forecast…',
+    '🧮 Calculating soil drying curve…',
+    '🧠 AI is deciding the watering days…',
+  ];
+  let si = 0;
+  prog.style.color = 'var(--green)';
+  prog.textContent = steps[0];
+  prog.style.display = 'block';
+  const timer = setInterval(() => { si = Math.min(si + 1, steps.length - 1); prog.textContent = steps[si]; }, 1300);
+  try {
+    const r = await fetch('/api/pump/plan/generate', { method: 'POST' });
+    const data = await r.json();
+    clearInterval(timer);
+    if (!r.ok) {
+      prog.textContent = '⚠ ' + (data.detail || 'Could not generate the plan');
+      prog.style.color = 'var(--red)';
+      strip.style.display = 'none';
+      btn.disabled = false;
+      return;
+    }
+    prog.style.display = 'none';
+    renderPlanDays(data.days);
+    const meta = document.getElementById('plan-meta');
+    meta.textContent = "AI plan generated just now · saved in your plant's database";
+    meta.style.display = 'block';
+    if (data.ai_summary) {
+      const ai = document.getElementById('plan-ai');
+      ai.textContent = '🤖 ' + data.ai_summary;
+      ai.style.display = 'block';
+    }
+    btn.textContent = '🔄 Regenerate Plan';
+  } catch (e) {
+    clearInterval(timer);
+    prog.textContent = '⚠ Server unreachable — try again';
+    prog.style.color = 'var(--red)';
+    strip.style.display = 'none';
+  }
+  btn.disabled = false;
+}
+
+function updatePumpRuleSummary(auto) {
+  const extras = [
+    ['temp_max','temperature ≤ ','°C'],['humidity_max','humidity ≤ ','%'],['n_min','N < ',' mg/kg'],
+    ['p_min','P < ',' mg/kg'],['k_min','K < ',' mg/kg'],['ec_max','EC ≤ ',' mS/cm'],
+    ['ph_min','pH ≥ ',''],['ph_max','pH ≤ ',''],['rain_max','rain chance ≤ ','%']
+  ].filter(([key]) => auto[key] !== '' && auto[key] != null).map(([key,label,unit]) => label + auto[key] + unit);
+  document.getElementById('pa-summary').textContent =
+    `${auto.action_type === 'fertilizer' ? 'Fertilizer' : 'Water'} action: moisture below ${auto.on_below}%, stop at ${auto.off_at}%, ` +
+    `${auto.window_start}–${auto.window_end}${extras.length ? ' · optional checks: ' + extras.join(', ') : ' · no optional checks enabled'}.`;
+}
+
+function toggleFertilizerFields() {
+  const show = document.getElementById('pa-action').value === 'fertilizer';
+  document.querySelectorAll('.fertilizer-rule').forEach(el => el.style.display = show ? '' : 'none');
+}
+
+async function savePumpRules() {
+  const st = document.getElementById('pa-status');
+  const on = parseFloat(document.getElementById('pa-on').value);
+  const off = parseFloat(document.getElementById('pa-off').value);
+  if (isNaN(on) || isNaN(off) || on >= off) {
+    st.textContent = 'ON threshold must be lower than OFF target';
+    st.style.color = 'var(--red)';
+    return;
+  }
+  const body = {
+    pump_auto_on_below: String(on),
+    pump_auto_off_at: String(off),
+    pump_watering_window_start: document.getElementById('pa-ws').value,
+    pump_watering_window_end: document.getElementById('pa-we').value,
+    pump_rule_temp_max: document.getElementById('pa-temp').value,
+    pump_rule_humidity_max: document.getElementById('pa-hum').value,
+    pump_rule_n_min: document.getElementById('pa-n').value,
+    pump_rule_p_min: document.getElementById('pa-p').value,
+    pump_rule_k_min: document.getElementById('pa-k').value,
+    pump_rule_ec_max: document.getElementById('pa-ec').value,
+    pump_rule_ph_min: document.getElementById('pa-ph-min').value,
+    pump_rule_ph_max: document.getElementById('pa-ph-max').value,
+    pump_rule_rain_max: document.getElementById('pa-rain').value,
+    pump_action_type: document.getElementById('pa-action').value,
+    pump_fertilizer_method: document.getElementById('pa-fert-method').value,
+    pump_fertilizer_concentration: document.getElementById('pa-fert-conc').value,
+    pump_fertilizer_tank_liters: document.getElementById('pa-fert-tank').value,
+  };
+  await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  st.textContent = '✅ Rules saved';
+  st.style.color = 'var(--green)';
+  setTimeout(() => st.textContent = '', 3000);
+  loadPumpPage();
+}
+
+async function sprayOn() {
+  if (!document.getElementById('pa-fert-conc').value) { alert('Enter a fertilizer concentration from the product label first.'); return; }
+  const r = await fetch('/api/spray/on', {method:'POST'});
+  const d = await r.json();
+  document.getElementById('pa-status').textContent = r.ok ? `🧪 ${d.method} started` : (d.detail || 'Could not start spray');
+}
+
+async function sprayOff() {
+  await fetch('/api/spray/off', {method:'POST'});
+  document.getElementById('pa-status').textContent = '✅ Fertilizer spray stopped';
+}
+
+// ─── SMART WATERING PLAN ───
+async function loadSmartPlan(withAi = false) {
+  try {
+    const planUser = getUser();
+    const planParams = new URLSearchParams();
+    if (withAi) planParams.set('ai', '1');
+    if (planUser?.email) planParams.set('user_email', planUser.email);
+    const p = await fetch('/api/smart-plan?' + planParams.toString()).then(r => r.json());
+    const card = document.getElementById('smart-plan-card');
+    if (!card) return;
+    document.getElementById('sp-headline').textContent = p.headline;
+    const reasons = document.getElementById('sp-reasons');
+    reasons.innerHTML = '';
+    (p.reasons || []).forEach(txt => {
+      const li = document.createElement('li');
+      li.textContent = txt;
+      reasons.appendChild(li);
+    });
+    const w = document.getElementById('sp-weather');
+    if (p.weather && p.weather.max_temp !== null) {
+      const rain = p.weather.max_rain_prob !== null ? `🌧 ${p.weather.max_rain_prob}% rain` : '';
+      w.textContent = `Next 24h: ${rain} · 🌡 up to ${p.weather.max_temp}°C${p.outdoor ? '' : ' · 🏠 indoor'}`;
+    } else {
+      w.textContent = 'Weather unavailable';
+    }
+    const ai = document.getElementById('sp-ai');
+    if (p.ai_insight) {
+      ai.textContent = '🤖 ' + p.ai_insight;
+      ai.style.display = 'block';
+    }
+    card.style.display = 'block';
+    // the smart card supersedes the old simple predictor
+    const oldPredictor = document.getElementById('predictor-card');
+    if (oldPredictor) oldPredictor.style.display = 'none';
+  } catch (e) {
+    console.error('smart plan failed', e);
+  }
+}
+
+// ─── UTILS ───
+function fmtTs(ts) {
+  if (!ts) return '—';
+  try { return new Date(ts).toLocaleString(); } catch(e) { return ts; }
+}
+function timeSince(ts) {
+  const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+function capitalize(s) { return s ? s[0].toUpperCase()+s.slice(1) : ''; }
+
+
+// ─── DEVICES ───
+let serverInfo = {};
+
+async function loadServerInfo() {
+  try {
+    const r = await fetch('/api/server/info').then(r => r.json());
+    serverInfo = r;
+    document.getElementById('srv-ip').textContent    = r.server_ip;
+    document.getElementById('srv-port').textContent  = r.port;
+    document.getElementById('srv-ingest').textContent = r.ingest_url;
+    document.getElementById('srv-dash').textContent   = r.dashboard_url;
+    document.getElementById('q-ip').textContent       = r.server_ip;
+  } catch(e) {}
+}
+
+async function testPing() {
+  const el = document.getElementById('ping-result');
+  el.textContent = 'Pinging…';
+  el.style.color = 'var(--muted)';
+  const t0 = Date.now();
+  try {
+    const r = await fetch('/api/ping').then(r => r.json());
+    const ms = Date.now() - t0;
+    el.textContent = `✅ Server responded in ${ms}ms — ${r.ts}`;
+    el.style.color = 'var(--green)';
+  } catch(e) {
+    el.textContent = '❌ Server unreachable — is uvicorn running?';
+    el.style.color = 'var(--red)';
+  }
+}
+
+function showQR() {
+  const card = document.getElementById('qr-card');
+  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+  if (card.style.display === 'block' && serverInfo.dashboard_url) {
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '';
+    const url = serverInfo.dashboard_url;
+    // Use QR server API (works offline on LAN since it loads from CDN once)
+    const img = document.createElement('img');
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+    img.width = 200; img.height = 200;
+    img.alt = 'QR Code';
+    container.appendChild(img);
+  }
+}
+
+function setSSID() {
+  const val = document.getElementById('wifi-ssid-input').value.trim();
+  if (val) document.getElementById('q-ssid').textContent = val;
+}
+
+async function loadDevices() {
+  const r = await fetch('/api/devices').then(r => r.json());
+  const container = document.getElementById('devices-list');
+  container.innerHTML = '';
+  if (!r.devices.length) {
+    container.innerHTML = `
+      <div class="card" style="text-align:center">
+        <div style="font-size:32px;margin-bottom:12px">📡</div>
+        <div style="color:var(--muted);font-size:14px">No devices seen yet.<br>Flash your ESP8266 and it will appear here automatically when it sends its first reading.</div>
+      </div>`;
+    return;
+  }
+  r.devices.forEach(d => {
+    const onlineBadge = d.online
+      ? `<span class="badge badge-ok">🟢 Online</span>`
+      : `<span class="badge badge-error">🔴 Offline</span>`;
+    const gapWarn = d.gap_warning && !d.online
+      ? `<div style="margin-top:8px;font-size:12px;color:var(--orange)">⚠️ No data for a while — check power and Wi-Fi</div>` : '';
+    const rssiBar = d.rssi
+      ? `<div class="card-sub" style="margin-top:4px">Signal: ${d.rssi} dBm ${rssiQuality(d.rssi)}</div>` : '';
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.marginBottom = '14px';
+    div.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-size:22px">📡</span>
+            <div>
+              <div style="font-weight:700;font-size:15px" id="dev-name-${d.device_id}">${d.name}</div>
+              <div class="card-sub">ID: ${d.device_id}</div>
+            </div>
+            ${onlineBadge}
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
+            <div><span style="color:var(--muted)">Last seen</span><br><strong>${d.last_seen_ago}</strong></div>
+            <div><span style="color:var(--muted)">IP Address</span><br><strong>${d.last_ip || '—'}</strong></div>
+            <div><span style="color:var(--muted)">Plant</span><br><strong>${d.plant_name || '—'}</strong></div>
+            <div><span style="color:var(--muted)">Readings today</span><br><strong>${d.readings_today}</strong></div>
+            <div><span style="color:var(--muted)">POSTs OK</span><br><strong style="color:var(--green)">${d.posts_ok}</strong></div>
+            <div><span style="color:var(--muted)">POSTs Failed</span><br><strong style="color:var(--red)">${d.posts_fail}</strong></div>
+          </div>
+          ${rssiBar}
+          ${gapWarn}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:130px">
+          <input class="form-input" id="rename-${d.device_id}" value="${d.name}" placeholder="Rename device" style="font-size:12px;padding:8px 10px">
+          <button class="btn btn-outline" style="font-size:12px;padding:7px 12px" onclick="renameDevice('${d.device_id}')">✏️ Rename</button>
+          <button class="btn btn-red" style="font-size:12px;padding:7px 12px" onclick="deleteDevice('${d.device_id}')">🗑 Remove</button>
+        </div>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+function rssiQuality(rssi) {
+  if (rssi >= -50) return '📶 Excellent';
+  if (rssi >= -65) return '📶 Good';
+  if (rssi >= -75) return '📶 Fair';
+  return '📶 Weak — move ESP closer to router';
+}
+
+async function renameDevice(id) {
+  const name = document.getElementById('rename-'+id).value.trim();
+  if (!name) return;
+  await fetch('/api/devices/update', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({device_id: id, name})});
+  loadDevices();
+}
+
+async function deleteDevice(id) {
+  if (!confirm('Remove this device from the list?')) return;
+  await fetch('/api/devices/'+id, {method:'DELETE'});
+  loadDevices();
+}
+
+// ─── USER LOGIN (simple identification, local DB only) ───
+let authMode = 'login';
+let profileCrops = {};
+
+async function ensureFarmProfile(forceOpen=false) {
+  const u = getUser();
+  if (!u) return;
+  const data = await fetch('/api/profile/' + encodeURIComponent(u.email)).then(r => r.json());
+  const profile = data.profile;
+  const complete = !!data.profile_complete;
+  u.profile_complete = complete;
+  localStorage.setItem('ppUser', JSON.stringify(u));
+  const badge = document.getElementById('profile-status');
+  const summary = document.getElementById('profile-summary');
+  if (badge) {
+    badge.textContent = complete ? 'Complete' : 'Incomplete';
+    badge.className = 'badge ' + (complete ? 'badge-ok' : 'badge-warning');
+  }
+  if (summary && profile) {
+    const plants = (profile.plants || []).map(p => `${p.name} · ${p.growth_stage || 'vegetative'} (${p.quantity})`).join(' · ');
+    summary.innerHTML = `<b style="color:#e0f2e9">${profile.farm_name}</b> · ${profile.parcel_name} · ${profile.parcel_area} ${profile.parcel_unit.replace('_',' ')}<br>About ${profile.approximate_plant_count} plants · ${plants}`;
+  } else if (summary) {
+    summary.textContent = 'Add your land parcel and plants to personalize PlantPulse.';
+  }
+  if (!profileCrops || !Object.keys(profileCrops).length) {
+    profileCrops = (await fetch('/api/crops').then(r => r.json())).crops || {};
+  }
+  if (profile) fillFarmProfile(profile);
+  else resetFarmProfileForm();
+  if (!complete || forceOpen) {
+    if (!document.querySelector('.profile-plant-row')) addProfilePlant();
+    document.getElementById('profile-overlay').classList.add('show');
+  }
+}
+
+function cropOptions(selected='') {
+  return Object.entries(profileCrops).map(([key, name]) => `<option value="${key}" ${key===selected?'selected':''}>${name}</option>`).join('');
+}
+
+function addProfilePlant(plant={}) {
+  const row = document.createElement('div');
+  row.className = 'profile-plant-row';
+  row.innerHTML = `<input class="form-input pf-plant-name" placeholder="Plant name" value="${plant.name || ''}">
+    <select class="form-select pf-crop">${cropOptions(plant.crop_type || '')}</select>
+    <select class="form-select pf-stage">
+      <option value="seedling" ${plant.growth_stage==='seedling'?'selected':''}>Seedling</option>
+      <option value="vegetative" ${!plant.growth_stage||plant.growth_stage==='vegetative'?'selected':''}>Vegetative</option>
+      <option value="flowering" ${plant.growth_stage==='flowering'?'selected':''}>Flowering</option>
+      <option value="fruiting" ${plant.growth_stage==='fruiting'?'selected':''}>Fruiting</option>
+    </select>
+    <input class="form-input pf-quantity" type="number" min="1" value="${plant.quantity || 1}" title="Quantity">
+    <button type="button" onclick="this.parentElement.remove()" title="Remove">×</button>`;
+  document.getElementById('pf-plants').appendChild(row);
+}
+
+function fillFarmProfile(profile) {
+  document.getElementById('pf-farm-name').value = profile.farm_name || '';
+  document.getElementById('pf-parcel-name').value = profile.parcel_name || '';
+  document.getElementById('pf-parcel-area').value = profile.parcel_area || '';
+  document.getElementById('pf-parcel-unit').value = profile.parcel_unit || 'acre';
+  document.getElementById('pf-plant-count').value = profile.approximate_plant_count || '';
+  document.getElementById('pf-plants').innerHTML = '';
+  (profile.plants || []).forEach(addProfilePlant);
+  if (!(profile.plants || []).length) addProfilePlant();
+}
+
+function resetFarmProfileForm() {
+  document.getElementById('pf-farm-name').value = '';
+  document.getElementById('pf-parcel-name').value = '';
+  document.getElementById('pf-parcel-area').value = '';
+  document.getElementById('pf-parcel-unit').value = 'acre';
+  document.getElementById('pf-plant-count').value = '';
+  document.getElementById('pf-plants').innerHTML = '';
+  document.getElementById('pf-error').textContent = '';
+  if (Object.keys(profileCrops || {}).length) addProfilePlant();
+}
+
+async function openFarmProfileEditor() {
+  await ensureFarmProfile(true);
+  if (!document.querySelector('.profile-plant-row')) addProfilePlant();
+}
+
+async function saveFarmProfile() {
+  const u = getUser();
+  const error = document.getElementById('pf-error');
+  const plants = [...document.querySelectorAll('.profile-plant-row')].map(row => ({
+    name: row.querySelector('.pf-plant-name').value.trim(),
+    crop_type: row.querySelector('.pf-crop').value,
+    growth_stage: row.querySelector('.pf-stage').value,
+    quantity: Number(row.querySelector('.pf-quantity').value),
+  })).filter(p => p.name && p.quantity > 0);
+  const body = {
+    user_email: u.email,
+    farm_name: document.getElementById('pf-farm-name').value.trim(),
+    parcel_name: document.getElementById('pf-parcel-name').value.trim(),
+    parcel_area: Number(document.getElementById('pf-parcel-area').value),
+    parcel_unit: document.getElementById('pf-parcel-unit').value,
+    approximate_plant_count: Number(document.getElementById('pf-plant-count').value),
+    plants,
+  };
+  if (!body.farm_name || !body.parcel_name || body.parcel_area <= 0 || body.approximate_plant_count <= 0 || !plants.length) {
+    error.textContent = 'Complete all farm fields and add at least one plant.'; return;
+  }
+  const r = await fetch('/api/profile', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const data = await r.json();
+  if (!r.ok) { error.textContent = data.detail || 'Could not save profile'; return; }
+  u.profile_complete = true;
+  localStorage.setItem('ppUser', JSON.stringify(u));
+  error.textContent = '';
+  document.getElementById('profile-overlay').classList.remove('show');
+  await ensureFarmProfile(false);
+  loadDashboard();
+}
+
+function getUser() {
+  try { return JSON.parse(localStorage.getItem('ppUser')); } catch (e) { return null; }
+}
+
+function showUserGreeting() {
+  const u = getUser();
+  const greet = document.getElementById('user-greet');
+  if (greet && u) {
+    greet.textContent = `Hi, ${u.first_name} 👋`;
+    greet.style.display = 'block';
+  } else if (greet) {
+    greet.style.display = 'none';
+  }
+}
+
+function setAuthTab(mode) {
+  authMode = mode;
+  document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+  document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
+  document.getElementById('field-name').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-submit').textContent = mode === 'signup' ? 'Sign up' : 'Log in';
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+function showAuthError(text) {
+  const el = document.getElementById('auth-error');
+  el.textContent = text;
+  el.style.display = 'block';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const name = document.getElementById('auth-name').value.trim();
+  const password = document.getElementById('auth-password').value;
+  if (!email) { showAuthError('Please enter your email'); return; }
+  if (authMode === 'signup' && !name) { showAuthError('Please enter your first name'); return; }
+  if (!password) { showAuthError('Please enter your password'); return; }
+  if (authMode === 'signup' && password.length < 4) { showAuthError('Password must be at least 4 characters'); return; }
+  const url = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
+  const payload = authMode === 'signup' ? { email, first_name: name, password } : { email, password };
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await r.json();
+    if (!r.ok) { showAuthError(data.detail || 'Something went wrong'); return; }
+    localStorage.setItem('ppUser', JSON.stringify(data.user));
+    document.getElementById('login-overlay').classList.remove('show');
+    document.getElementById('auth-password').value = '';
+    showUserGreeting();
+    refreshChatThreads();
+    await ensureFarmProfile(false);
+  } catch (e) {
+    showAuthError('Cannot reach the PlantPulse server');
+  }
+}
+
+function logoutUser() {
+  resetFarmProfileForm();
+  localStorage.removeItem('ppUser');
+  showUserGreeting();
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-name').value = '';
+  document.getElementById('auth-password').value = '';
+  chatState.activeId = null;
+  chatState.threads = [];
+  clearChatMessages();
+  setChatTitle('New chat');
+  setAuthTab('login');
+  document.getElementById('login-overlay').classList.add('show');
+  document.getElementById('profile-overlay').classList.remove('show');
+}
+
+async function changePassword() {
+  const st = document.getElementById('cp-status');
+  const u = getUser();
+  if (!u) { st.textContent = 'Please log in first'; st.style.color = 'var(--red)'; return; }
+  const oldPw = document.getElementById('cp-old').value;
+  const newPw = document.getElementById('cp-new').value;
+  if (!oldPw || !newPw) { st.textContent = 'Fill in both fields'; st.style.color = 'var(--red)'; return; }
+  try {
+    const r = await fetch('/api/auth/change-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: u.email, old_password: oldPw, new_password: newPw })
+    });
+    const data = await r.json();
+    if (!r.ok) { st.textContent = data.detail || 'Failed'; st.style.color = 'var(--red)'; return; }
+    st.textContent = '✅ Password changed';
+    st.style.color = 'var(--green)';
+    document.getElementById('cp-old').value = '';
+    document.getElementById('cp-new').value = '';
+  } catch (e) {
+    st.textContent = 'Server unreachable'; st.style.color = 'var(--red)';
+  }
+}
+
+function requireUser() {
+  if (getUser()) { showUserGreeting(); return; }
+  document.getElementById('login-overlay').classList.add('show');
+}
+
+// ─── INIT ───
+async function init() {
+  requireUser();
+  await loadSettings();
+  await loadDashboard();
+  await loadServerInfo();
+  await loadDevices();
+  await checkConn();
+  loadSmartPlan(true);
+  loadLatestDecision();
+  loadAdvice();
+  if (getUser()) ensureFarmProfile(false);
+  setInterval(loadDashboard, 60000);
+  setInterval(checkConn, 30000);
+  setInterval(() => loadSmartPlan(false), 300000);
+  setInterval(loadAdvice, 300000);
+}
+init();
+
+  // ── Wi-Fi Push: browser fetches server IP, then sends direct to ESP ──────
+  async function pushWifiToESP() {
+    const ssid = document.getElementById('esp-setup-ssid').value.trim();
+    const pass = document.getElementById('esp-setup-pass').value;
+    const st   = document.getElementById('esp-push-status');
+    if (!ssid) { st.textContent = '⚠️ Please enter your Wi-Fi name'; st.style.color='var(--orange)'; return; }
+    st.innerHTML = '⏳ Getting server IP...'; st.style.color = 'var(--muted)';
+    let serverIp = '';
+    try {
+      const ipResp = await fetch('/api/server/ip');
+      const ipData = await ipResp.json();
+      serverIp = ipData.ip;
+    } catch(e) {
+      st.textContent = '❌ Server not reachable. Make sure the server is running.';
+      st.style.color = 'var(--red,#ff5d73)'; return;
+    }
+    st.innerHTML = '⏳ Sending to ESP at 192.168.4.1...'; st.style.color = 'var(--muted)';
+    try {
+      const fd = new FormData();
+      fd.append('ssid', ssid);
+      fd.append('pass', pass);
+      fd.append('ip', serverIp);
+      const r = await fetch('http://192.168.4.1/push-wifi', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.status === 'saved') {
+        st.innerHTML = '✅ Done! ESP saved credentials and is rebooting.<br>Now reconnect your device to your normal Wi-Fi.';
+        st.style.color = 'var(--green)';
+        document.getElementById('esp-setup-ssid').value = '';
+        document.getElementById('esp-setup-pass').value = '';
+        setTimeout(loadDevices, 15000);
+      } else {
+        st.textContent = '⚠️ Unexpected response from ESP.';
+        st.style.color = 'var(--orange)';
+      }
+    } catch(e) {
+      st.innerHTML = '❌ Could not reach ESP.<br>Make sure you are connected to <b>PlantPulse-Setup</b> Wi-Fi hotspot first.';
+      st.style.color = 'var(--red,#ff5d73)';
+    }
+  }
+
+</script>
+</body>
+</html>
